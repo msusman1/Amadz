@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Amadz</string>
+    <string name="title_activity_ongoing_call">OngoingCallActivity</string>
+    <string name="title_activity_onboarding">OnboardingActivity</string>
+</resources>
