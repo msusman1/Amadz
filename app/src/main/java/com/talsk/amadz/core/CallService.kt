@@ -26,6 +26,7 @@ class CallService : InCallService() {
     val TAG = "CallService"
     private lateinit var powerManager: PowerManager
     private lateinit var keyguardManager: KeyguardManager
+    private var lastCallIncomming = false
     override fun onCreate() {
         powerManager = getSystemService(PowerManager::class.java)
         keyguardManager = getSystemService(KeyguardManager::class.java)
@@ -46,6 +47,7 @@ class CallService : InCallService() {
         Log.d(TAG, "onCallAdded() called with: call = $call")
         super.onCallAdded(call)
         CallManager.updateCall(call)
+        lastCallIncomming = call.state == Call.STATE_RINGING
         if (call.state == Call.STATE_RINGING) {
             if (powerManager.isInteractive && keyguardManager.isKeyguardLocked.not()) {
                 App.instance.notificationHelper.displayIncomingCallNotification(call.callPhone())
@@ -53,15 +55,18 @@ class CallService : InCallService() {
 
             } else {
                 App.instance.notificationHelper.playCallRingTone()
-                CallActivity.start(this,call.callPhone())
+                CallActivity.start(this, call.callPhone())
             }
         } else if (call.state == Call.STATE_CONNECTING || call.state == Call.STATE_DIALING) {
-            CallActivity.start(this,call.callPhone())
+            CallActivity.start(this, call.callPhone())
         }
     }
 
     override fun onCallRemoved(call: Call) {
         super.onCallRemoved(call)
+        if (call.details.connectTimeMillis == 0L && lastCallIncomming) {
+            App.instance.notificationHelper.showMissedCallNotification(call.callPhone())
+        }
         CallManager.updateCall(null)
     }
 

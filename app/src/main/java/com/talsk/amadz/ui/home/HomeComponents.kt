@@ -3,16 +3,17 @@ package com.talsk.amadz.ui.home
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,8 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,13 +46,13 @@ fun homeRoutes(): List<BottomNavMenu> {
         BottomNavMenu(
             icon = R.drawable.baseline_star_border_24,
             iconSelected = R.drawable.baseline_star_24,
-            label = "Favourite",
+            label = "Favourites",
             route = "favourite"
         ),
         BottomNavMenu(
             icon = R.drawable.baseline_access_time_24,
             iconSelected = R.drawable.baseline_access_time_filled_24,
-            label = "Recent",
+            label = "Recents",
             route = "recent"
         ),
 
@@ -81,14 +80,48 @@ fun HeaderItem(text: String) {
 
 }
 
+@Composable
+fun EmptyContactItem() {
+    Spacer(
+        modifier = Modifier.size(56.dp),
+    )
+
+}
+
+
+@Composable
+fun FavouriteItemGroup(contacts: List<ContactData>, onCallClick: (ContactData) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val first = contacts.getOrNull(0)
+        val second = contacts.getOrNull(1)
+        val third = contacts.getOrNull(2)
+        if (first != null) {
+            FavouriteItem(first, onCallClick)
+        }
+        if (second != null) {
+            FavouriteItem(second, onCallClick)
+        } else {
+            Spacer(modifier = Modifier.size(96.dp))
+        }
+        if (third != null) {
+            FavouriteItem(third, onCallClick)
+        } else {
+            Spacer(modifier = Modifier.size(96.dp))
+        }
+    }
+
+}
 
 @Composable
 fun FavouriteItem(contact: ContactData, onCallClick: (ContactData) -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .padding(vertical = 16.dp, horizontal = 8.dp)
-            .clickable() { onCallClick(contact) }
-            .clip(RoundedCornerShape(32.dp))) {
+            .clickable() { onCallClick(contact) }) {
         Spacer(modifier = Modifier.height(12.dp))
         TextOrBitmapDrawable(modifier = Modifier.size(96.dp), contact = contact) {
             Icon(
@@ -160,7 +193,7 @@ fun ContactItem(
     contact: ContactData,
     onContactDetailClick: (ContactData) -> Unit,
     onCallClick: (ContactData) -> Unit,
-    onFavouriteToggle: (ContactData) -> Unit
+    onFavouriteToggle: ((ContactData) -> Unit)? = null
 ) {
     ListItem(modifier = Modifier.clickable { onContactDetailClick(contact) },
         leadingContent = {
@@ -170,12 +203,13 @@ fun ContactItem(
         supportingContent = { Text(text = contact.phone) },
         trailingContent = {
             Row {
-
-                IconButton(onClick = { onFavouriteToggle(contact) }) {
-                    Icon(
-                        painter = painterResource(id = if (contact.isFavourite) R.drawable.baseline_star_24 else R.drawable.baseline_star_border_24),
-                        contentDescription = "Call"
-                    )
+                if (onFavouriteToggle != null) {
+                    IconButton(onClick = { onFavouriteToggle(contact) }) {
+                        Icon(
+                            painter = painterResource(id = if (contact.isFavourite) R.drawable.baseline_star_24 else R.drawable.baseline_star_border_24),
+                            contentDescription = "Call"
+                        )
+                    }
                 }
                 IconButton(onClick = { onCallClick(contact) }) {
                     Icon(
@@ -213,9 +247,9 @@ fun CallLogItem(
         supportingContent = {
             Row {
                 Icon(
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(18.dp).padding(end = 4.dp),
                     painter = painterResource(id = getCallIcon()),
-                    tint = if (logData.callLogType == CallLogType.MISSED) MaterialTheme.colorScheme.error else Color.Unspecified,
+                    tint = if (logData.callLogType == CallLogType.MISSED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground,
                     contentDescription = null
                 )
                 Text(text = logData.time.toReadableFormat())

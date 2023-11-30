@@ -1,9 +1,11 @@
 package com.talsk.amadz.ui.ongoingCall
 
+import android.app.AlertDialog
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.telephony.TelephonyManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,6 +31,8 @@ class CallActivity : ComponentActivity() {
         )
     })
     lateinit var notificationManager: NotificationManager
+    var alertDialog: AlertDialog? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -36,11 +40,11 @@ class CallActivity : ComponentActivity() {
             val currentActivity = LocalContext.current as? CallActivity
             val uiState by vm.callState.collectAsState()
             val callTime by vm.callTime.collectAsState()
-            if (uiState is CallUiState.CallDisconnected) {
+            if (uiState is CallUiState.CallDisconnected && alertDialog == null) {
                 currentActivity?.finishAndRemoveTask()
             }
             CallScreen(
-                contact=vm.contactData,
+                contact = vm.contactData,
                 uiState = uiState,
                 callTime = callTime,
                 onIncomingAccept = vm::accept,
@@ -54,7 +58,25 @@ class CallActivity : ComponentActivity() {
         notificationManager = getSystemService(NotificationManager::class.java)
         clearNotification()
         addLockScreenFlag()
+        checkAirPlanAndSimStats()
+    }
 
+
+
+    private fun checkAirPlanAndSimStats() {
+        val telephonyManager = getSystemService(TelephonyManager::class.java)
+        if (telephonyManager.simState != TelephonyManager.SIM_STATE_READY) {
+            alertDialog =
+                AlertDialog.Builder(this).setMessage(telephonyManager.simState.ToSimstateReadable())
+                    .setPositiveButton("Ok") { dialogInterface, _ ->
+                        dialogInterface.dismiss()
+                        if (vm.callState.value is CallUiState.CallDisconnected) {
+                            finishAndRemoveTask()
+                        }
+                        alertDialog = null
+                    }
+                    .show()
+        }
     }
 
     private fun clearNotification() {
@@ -85,5 +107,22 @@ class CallActivity : ComponentActivity() {
 
         }
     }
+}
+
+fun Int.ToSimstateReadable(): String {
+    return when (this) {
+        TelephonyManager.SIM_STATE_ABSENT -> "No Sim available"
+        TelephonyManager.SIM_STATE_CARD_IO_ERROR -> "Card Io error"
+        TelephonyManager.SIM_STATE_CARD_RESTRICTED -> "Sim card restricted"
+        TelephonyManager.SIM_STATE_NETWORK_LOCKED -> "Network locked"
+        TelephonyManager.SIM_STATE_NOT_READY -> "Sim not ready"
+        TelephonyManager.SIM_STATE_PERM_DISABLED -> "PERM disabled"
+        TelephonyManager.SIM_STATE_PIN_REQUIRED -> "PIN Required"
+        TelephonyManager.SIM_STATE_PUK_REQUIRED -> "PUK Required"
+        TelephonyManager.SIM_STATE_READY -> "Sim is ready"
+        else -> "Unknown"
+    }
+
+
 }
 

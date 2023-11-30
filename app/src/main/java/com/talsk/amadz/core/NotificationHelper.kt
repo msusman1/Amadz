@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.DEFAULT_SOUND
 import androidx.core.app.NotificationCompat.DEFAULT_VIBRATE
 import androidx.core.app.NotificationManagerCompat
+import com.talsk.amadz.MainActivity
 import com.talsk.amadz.R
 import com.talsk.amadz.data.ContactImageRepository
 import com.talsk.amadz.data.ContactsRepository
@@ -31,8 +32,8 @@ class NotificationHelper(private val context: Context) {
     private val callChannelName = "AMADZ_CALL_NOTIFICATION"
     private val notificationManager: NotificationManager =
         context.getSystemService(NotificationManager::class.java)
-  private val contactsRepository = ContactsRepository(context)
-  private val contactImageRepository = ContactImageRepository(context)
+    private val contactsRepository = ContactsRepository(context)
+    private val contactImageRepository = ContactImageRepository(context)
     private var ringtone: Ringtone? = null
 
     init {
@@ -42,9 +43,9 @@ class NotificationHelper(private val context: Context) {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                  callChannelId,
-                  callChannelName,
-                  NotificationManager.IMPORTANCE_HIGH
+                callChannelId,
+                callChannelName,
+                NotificationManager.IMPORTANCE_HIGH
             )
             channel.description = "Incoming call notification";
             val mgr = NotificationManagerCompat.from(context)
@@ -122,9 +123,37 @@ class NotificationHelper(private val context: Context) {
     }
 
     fun playCallRingTone() {
-        val notification = RingtoneManager.getActualDefaultRingtoneUri(this.context,RingtoneManager.TYPE_RINGTONE)
+        val notification =
+            RingtoneManager.getActualDefaultRingtoneUri(this.context, RingtoneManager.TYPE_RINGTONE)
         ringtone = RingtoneManager.getRingtone(context, notification)
         ringtone?.play()
+    }
+
+    fun showMissedCallNotification(phone: String) {
+        val intent = Intent(Intent.ACTION_MAIN, null)
+        intent.setClass(context, MainActivity::class.java)
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            1,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val builder = NotificationCompat.Builder(context, callChannelId)
+        builder.setContentIntent(pendingIntent)
+        val contactData = contactsRepository.getContactData(phone)
+        builder.setContentText(phone)
+        builder.setAutoCancel(true)
+        if (contactData != null) {
+            builder.setContentText(contactData.name)
+            val contactPic = contactImageRepository.loadContactImage(contactData.image)
+            if (contactPic != null) {
+                builder.setLargeIcon(contactPic)
+            }
+        }
+        builder.setSmallIcon(R.drawable.app_logo_short_notification)
+        builder.setContentTitle("Missed Call")
+        notificationManager.notify(1233, builder.build())
     }
 
     fun stepCallRingTone() {

@@ -9,9 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -40,6 +37,7 @@ import com.talsk.amadz.core.dial
 import com.talsk.amadz.data.CallLogData
 import com.talsk.amadz.data.ContactData
 import com.talsk.amadz.data.openContactDetailScreen
+import com.talsk.amadz.util.getStartOfDay
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/18/2023.
@@ -49,9 +47,11 @@ fun HomeScreen(
     contacts: List<ContactData>,
     callLogs: List<CallLogData>,
     onFavouriteToggle: (ContactData) -> Unit,
-    dailButtonClicked: () -> Unit
+    onContactDetailClick: (ContactData) -> Unit,
+    dailButtonClicked: () -> Unit,
 ) {
-    val favourites: List<ContactData> = remember(key1 = contacts) { contacts.filter { it.isFavourite } }
+    val favourites: List<ContactData> =
+        remember(key1 = contacts) { contacts.filter { it.isFavourite } }
     val context = LocalContext.current
     val navController: NavHostController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -97,43 +97,72 @@ fun HomeScreen(
         ) {
 
             composable("favourite") {
-                Column {
-                    HeaderItem(text = "Favourites")
+
+                LazyColumn {
+                    item {
+                        HeaderItem(text = "Favourites")
+                    }
                     if (favourites.isEmpty()) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Image(
-                                modifier = Modifier.size(96.dp),
-                                painter = painterResource(id = R.drawable.image_favourite),
-                                contentDescription = null
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No Contact in Favourites",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    } else {
-                        LazyVerticalGrid(columns = GridCells.Fixed(3)) {
-                            items(favourites) { contact ->
-                                FavouriteItem(contact = contact,
-                                    onCallClick = { context.dial(it.phone) })
+                        item {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Image(
+                                    modifier = Modifier.size(96.dp),
+                                    painter = painterResource(id = R.drawable.image_favourite),
+                                    contentDescription = null
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "No Contact in Favourites",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                             }
                         }
+                    } else {
+                        items(favourites.chunked(3)) { contacts ->
+                            FavouriteItemGroup(contacts = contacts,
+                                onCallClick = { context.dial(it.phone) })
+                        }
                     }
+                    item {
+                        HeaderItem(text = "Frequents")
+                    }
+                    items(callLogs.filter { it.name.isNotEmpty() }
+                        .groupBy { it.phone }.values.sortedBy { it.size }.take(5)
+                        .mapNotNull { it.firstOrNull() }
+                    ) { callLog ->
+                        ContactItem(
+                            contact = callLog.toContactData(),
+                            onContactDetailClick = onContactDetailClick,
+                            onCallClick = { contactData -> context.dial(contactData.phone) },
+                            onFavouriteToggle = null
+                        )
+                    }
+                    item { EmptyContactItem() }
                 }
             }
             composable("recent") {
                 Column {
-                    HeaderItem(text = "Recent")
+                    val (older, today) = callLogs.partition { it.time.before(getStartOfDay()) }
                     LazyColumn {
-                        items(callLogs) { callLog ->
+                        if (today.isNotEmpty()) {
+                            item { HeaderItem(text = "Today") }
+                        }
+                        items(today) { callLog ->
                             CallLogItem(logData = callLog,
                                 onCallClick = { context.dial(it.phone) })
                         }
+                        if (older.isNotEmpty()) {
+                            item { HeaderItem(text = "Older") }
+                        }
+                        items(older) { callLog ->
+                            CallLogItem(logData = callLog,
+                                onCallClick = { context.dial(it.phone) })
+                        }
+                        item { EmptyContactItem() }
                     }
                 }
             }
@@ -151,6 +180,7 @@ fun HomeScreen(
                                 onFavouriteToggle = onFavouriteToggle
                             )
                         }
+                        item { EmptyContactItem() }
                     }
                 }
 
