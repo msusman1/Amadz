@@ -47,15 +47,12 @@ import com.talsk.amadz.ui.IconButtonLongClickable
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun DialpadPrew() {
-    Dialpad({}, {})
+    Dialpad("", {}, {})
 }
 
 @Composable
-fun Dialpad(onDialChange: (String) -> Unit, onCallDialed: (String) -> Unit) {
+fun Dialpad(phone: String, onDialChange: (String) -> Unit, onCallDialed: (String) -> Unit) {
     val toneGenerator = remember { ToneGenerator(AudioManager.STREAM_DTMF, 100) }
-    var phone: String by remember {
-        mutableStateOf("")
-    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -77,10 +74,10 @@ fun Dialpad(onDialChange: (String) -> Unit, onCallDialed: (String) -> Unit) {
             )
             IconButtonLongClickable(
                 modifier = Modifier.align(Alignment.CenterEnd),
-                onLongClick = { phone = "" },
+                onLongClick = { onDialChange("") },
                 onClick = {
                     if (phone.isNotEmpty()) {
-                        phone = phone.dropLast(1)
+                        onDialChange(phone.dropLast(1))
                     }
                 },
             ) {
@@ -93,32 +90,68 @@ fun Dialpad(onDialChange: (String) -> Unit, onCallDialed: (String) -> Unit) {
         Row(
             modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DialButton("1", "") { phone += "1";toneGenerator.startTone(ToneGenerator.TONE_DTMF_1) ;toneGenerator.stopTone()}
-            DialButton("2", "ABC") { phone += "2";toneGenerator.startTone(ToneGenerator.TONE_DTMF_2);toneGenerator.stopTone()}
-            DialButton("3", "DEF") { phone += "3";toneGenerator.startTone(ToneGenerator.TONE_DTMF_3);toneGenerator.stopTone()}
+            DialButton(
+                "1",
+                ""
+            ) { onDialChange(phone + "1");toneGenerator.startTone(ToneGenerator.TONE_DTMF_1);toneGenerator.stopTone() }
+            DialButton(
+                "2",
+                "ABC"
+            ) { onDialChange(phone + "2");toneGenerator.startTone(ToneGenerator.TONE_DTMF_2);toneGenerator.stopTone() }
+            DialButton(
+                "3",
+                "DEF"
+            ) { onDialChange(phone + "3");toneGenerator.startTone(ToneGenerator.TONE_DTMF_3);toneGenerator.stopTone() }
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DialButton("4", "GHI") { phone += "4";toneGenerator.startTone(ToneGenerator.TONE_DTMF_4);toneGenerator.stopTone() }
-            DialButton("5", "JKL") { phone += "5";toneGenerator.startTone(ToneGenerator.TONE_DTMF_5);toneGenerator.stopTone() }
-            DialButton("6", "MNO") { phone += "6";toneGenerator.startTone(ToneGenerator.TONE_DTMF_6);toneGenerator.stopTone() }
+            DialButton(
+                "4",
+                "GHI"
+            ) { onDialChange(phone + "4");toneGenerator.startTone(ToneGenerator.TONE_DTMF_4);toneGenerator.stopTone() }
+            DialButton(
+                "5",
+                "JKL"
+            ) { onDialChange(phone + "5");toneGenerator.startTone(ToneGenerator.TONE_DTMF_5);toneGenerator.stopTone() }
+            DialButton(
+                "6",
+                "MNO"
+            ) { onDialChange(phone + "6");toneGenerator.startTone(ToneGenerator.TONE_DTMF_6);toneGenerator.stopTone() }
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DialButton("7", "PQRS") { phone += "7";toneGenerator.startTone(ToneGenerator.TONE_DTMF_7);toneGenerator.stopTone() }
-            DialButton("8", "TUV") { phone += "8";toneGenerator.startTone(ToneGenerator.TONE_DTMF_8);toneGenerator.stopTone() }
-            DialButton("9", "WXYZ") { phone += "9";toneGenerator.startTone(ToneGenerator.TONE_DTMF_9);toneGenerator.stopTone() }
+            DialButton(
+                "7",
+                "PQRS"
+            ) { onDialChange(phone + "7");toneGenerator.startTone(ToneGenerator.TONE_DTMF_7);toneGenerator.stopTone() }
+            DialButton(
+                "8",
+                "TUV"
+            ) { onDialChange(phone + "8");toneGenerator.startTone(ToneGenerator.TONE_DTMF_8);toneGenerator.stopTone() }
+            DialButton(
+                "9",
+                "WXYZ"
+            ) { onDialChange(phone + "9");toneGenerator.startTone(ToneGenerator.TONE_DTMF_9);toneGenerator.stopTone() }
         }
         Row(
             modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DialButton("*", "") { phone += "*";toneGenerator.startTone(ToneGenerator.TONE_DTMF_S);toneGenerator.stopTone() }
-            DialButton("0", "+") { phone += "0";toneGenerator.startTone(ToneGenerator.TONE_DTMF_0);toneGenerator.stopTone() }
-            DialButton("#", "") { phone += "#";toneGenerator.startTone(ToneGenerator.TONE_DTMF_P);toneGenerator.stopTone() }
+            DialButton(
+                "*",
+                ""
+            ) { onDialChange("$phone*");toneGenerator.startTone(ToneGenerator.TONE_DTMF_S);toneGenerator.stopTone() }
+            DialButton(
+                "0",
+                "+"
+            ) { onDialChange(phone + "0");toneGenerator.startTone(ToneGenerator.TONE_DTMF_0);toneGenerator.stopTone() }
+            DialButton(
+                "#",
+                ""
+            ) { onDialChange("$phone#");toneGenerator.startTone(ToneGenerator.TONE_DTMF_P);toneGenerator.stopTone() }
         }
         Button(
             onClick = { onCallDialed(phone) },

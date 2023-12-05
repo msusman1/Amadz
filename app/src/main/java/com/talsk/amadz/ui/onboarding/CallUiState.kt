@@ -7,6 +7,7 @@ sealed class CallUiState {
     object Initial : CallUiState()
     object InComingCall : CallUiState()
     object OutgoingCall : CallUiState()
+    object OnHold : CallUiState()
     object CallDisconnected : CallUiState()
     object InCall : CallUiState()
 

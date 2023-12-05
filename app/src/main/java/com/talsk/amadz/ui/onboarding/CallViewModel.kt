@@ -10,7 +10,6 @@ import com.talsk.amadz.core.CallManager
 import com.talsk.amadz.data.ContactData
 import com.talsk.amadz.data.ContactsRepository
 import com.talsk.amadz.util.secondsToReadableTime
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,8 +31,14 @@ class CallViewModel(phone: String, context: Context) : ViewModel() {
         get() = _callTime.map {
             secondsToReadableTime(it)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, "")
-    var contactData = contactsRepository.getContactData(phone)?: ContactData (-1, "Unknown", phone, null,isFavourite = false)
-    private var callOnHold = false
+    var contactData = contactsRepository.getContactData(phone) ?: ContactData(
+        -1,
+        "Unknown",
+        phone,
+        null,
+        isFavourite = false
+    )
+
     private val ongoingCallback = object : Call.Callback() {
         override fun onStateChanged(call: Call, state: Int) {
             callBackToUiState(call, state)
@@ -59,43 +64,38 @@ class CallViewModel(phone: String, context: Context) : ViewModel() {
 
             Call.STATE_CONNECTING, Call.STATE_DIALING -> {
                 _callState.value = CallUiState.OutgoingCall
-
             }
 
             Call.STATE_RINGING -> { //for incoming
                 _callState.value = CallUiState.InComingCall
             }
 
-            Call.STATE_DISCONNECTED -> {
-                job?.cancel()
-                _callState.value = CallUiState.CallDisconnected
+            Call.STATE_HOLDING -> {
+                _callState.value = CallUiState.OnHold
+            }
 
+            Call.STATE_DISCONNECTED -> {
+                _callState.value = CallUiState.CallDisconnected
+                timer?.cancel()
+                timer = null
             }
         }
     }
 
 
-    private var job: Job? = null
-    private val timer = Timer("some timer")
+    private var timer: Timer? = null
     private fun startTimer() {
-
-        timer.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                if (callOnHold.not()) {
-                    _callTime.update { it + 1 }
+        if (timer == null) {
+            timer = Timer("some timer")
+            timer?.scheduleAtFixedRate(object : TimerTask() {
+                override fun run() {
+                    if (callState.value is CallUiState.InCall) {
+                        _callTime.update { it + 1 }
+                    }
                 }
-            }
-        }, 0, 1000)
+            }, 0, 1000)
+        }
 
-
-        /*  job = viewModelScope.launch {
-              while (isActive) {
-                  if (callOnHold.not()) {
-                      _callTime.update { it + 1 }
-                  }
-                  delay(1000)
-              }
-          }*/
     }
 
     fun accept() {
@@ -113,21 +113,21 @@ class CallViewModel(phone: String, context: Context) : ViewModel() {
     }
 
     fun setCallOnHold(hold: Boolean) {
-        callOnHold = hold
         CallManager.setCallOnHold(hold)
 
     }
 
     override fun onCleared() {
         super.onCleared()
-        job?.cancel()
-        timer.cancel()
+        timer?.cancel()
+        timer = null
         CallManager.unRegisterCallBack()
     }
 
 
 }
-class CallViewModelFactory(private val phone: String, private val context: Context) : ViewModelProvider.Factory {
+class CallViewModelFactory(private val phone: String, private val context: Context) :
+   ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CallViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")

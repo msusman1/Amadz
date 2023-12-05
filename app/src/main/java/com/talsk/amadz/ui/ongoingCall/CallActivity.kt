@@ -67,7 +67,7 @@ class CallActivity : ComponentActivity() {
         val telephonyManager = getSystemService(TelephonyManager::class.java)
         if (telephonyManager.simState != TelephonyManager.SIM_STATE_READY) {
             alertDialog =
-                AlertDialog.Builder(this).setMessage(telephonyManager.simState.ToSimstateReadable())
+                AlertDialog.Builder(this).setMessage(telephonyManager.simState.ToSimstateReadable()).setCancelable(false)
                     .setPositiveButton("Ok") { dialogInterface, _ ->
                         dialogInterface.dismiss()
                         if (vm.callState.value is CallUiState.CallDisconnected) {

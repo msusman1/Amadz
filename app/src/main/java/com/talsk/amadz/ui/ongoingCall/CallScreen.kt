@@ -86,14 +86,19 @@ fun CallScreen(
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold
                         )
+                    } else if (uiState is CallUiState.OnHold) {
+                        Text(
+                            text = "Call On Hold",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
                 Column(
                     modifier = Modifier
                         .weight(0.4f)
                         .background(color = MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(horizontal = 56.dp),
-                    verticalArrangement = Arrangement.SpaceEvenly
+                        .padding(horizontal = 56.dp), verticalArrangement = Arrangement.SpaceEvenly
                 ) {
 
                     Row(
@@ -149,11 +154,9 @@ fun CallScreen(
                                 )
                             }
                         }
-                        if (uiState is CallUiState.InCall || uiState is CallUiState.OutgoingCall) {
+                        if (uiState is CallUiState.InCall || uiState is CallUiState.OutgoingCall || uiState is CallUiState.OnHold) {
                             FloatingActionButton(
-                                onClick = onEnd,
-                                containerColor = red,
-                                contentColor = Color.White
+                                onClick = onEnd, containerColor = red, contentColor = Color.White
                             ) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.baseline_call_end_24),
@@ -175,9 +178,7 @@ fun CallScreen(
 
 @Composable
 fun ToggleFab(
-    @DrawableRes icon: Int,
-    text: String,
-    onAction: (Boolean) -> Unit
+    @DrawableRes icon: Int, text: String, onAction: (Boolean) -> Unit
 ) {
     var isActive: Boolean by remember { mutableStateOf(false) }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -195,8 +196,7 @@ fun ToggleFab(
             modifier = Modifier.size(56.dp),
         ) {
             Icon(
-                painter = painterResource(id = icon),
-                contentDescription = text
+                painter = painterResource(id = icon), contentDescription = text
             )
         }
         Spacer(modifier = Modifier.height(12.dp))

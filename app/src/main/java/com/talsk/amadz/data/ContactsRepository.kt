@@ -74,11 +74,11 @@ class ContactsRepository(val context: Context) {
             ContactsContract.CommonDataKinds.Phone.NUMBER,
             ContactsContract.CommonDataKinds.Phone.PHOTO_URI
         )
-
+        val formattedPhoneNumber = phoneNumber.replace(" ", "")
         // Define the selection criteria
-        val selection = "${ContactsContract.CommonDataKinds.Phone.NUMBER} = ?"
-        val selectionArgs = arrayOf(phoneNumber)
-
+        val selection =
+            "${ContactsContract.CommonDataKinds.Phone.NUMBER} = ? OR REPLACE(${ContactsContract.CommonDataKinds.Phone.NUMBER}, ' ', '') = ?"
+        val selectionArgs = arrayOf(phoneNumber, formattedPhoneNumber)
         // Query the contacts
         val cursor: Cursor? = contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,

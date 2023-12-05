@@ -47,7 +47,7 @@ fun DialpadScreen(contacts: List<ContactData>) {
         bottomSheetScaffoldState.bottomSheetState.expand()
     })
     BottomSheetScaffold(
-        sheetContent = { Dialpad(onDialChange = { dialPhone = it }) { context.dial(it) } },
+        sheetContent = { Dialpad(dialPhone,onDialChange = { dialPhone = it }) { context.dial(it) } },
         sheetShape = BottomSheetDefaults.HiddenShape,
         sheetPeekHeight = 0.dp,
         containerColor = MaterialTheme.colorScheme.surface,

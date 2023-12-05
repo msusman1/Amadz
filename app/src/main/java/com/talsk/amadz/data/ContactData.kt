@@ -63,7 +63,7 @@ enum class CallLogType {
 
 fun List<ContactData>.filterContacts(query: String): List<ContactData> {
     return this.filter {
-        it.name.lowercase().contains(query.lowercase()).or(it.phone.contains(query))
+        it.name.lowercase().contains(query.lowercase()).or(it.phone.replace(" ","").contains(query))
     }
 }
 
