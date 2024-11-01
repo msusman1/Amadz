@@ -5,7 +5,7 @@ Welcome to **Amadz**! An alternative to the original ‘Phone’ app, designed t
 
 ![App Screenshot](https://github.com/msusman1/Amadz/blob/master/media/app_screenshot.png)
 
-App Demo: https://github.com/msusman1/Amadz/blob/master/media/amdaz_calling_app-demo.webm
+![App Demo](https://github.com/msusman1/Amadz/blob/master/media/amdaz_calling_app-demo.webm)
 
 ---
 
