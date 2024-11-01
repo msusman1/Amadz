@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.PowerManager
 import android.telecom.Call
 import android.telecom.CallAudioState
@@ -35,7 +36,12 @@ class CallService : InCallService() {
         intentFilter.addAction(CALL_ACTION_UN_MUTE)
         intentFilter.addAction(CALL_ACTION_SPEAKER_ON)
         intentFilter.addAction(CALL_ACTION_SPEAKER_OFF)
-        registerReceiver(callActionReceiver, intentFilter)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(callActionReceiver, intentFilter, RECEIVER_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(callActionReceiver, intentFilter)
+        }
     }
 
     override fun onDestroy() {

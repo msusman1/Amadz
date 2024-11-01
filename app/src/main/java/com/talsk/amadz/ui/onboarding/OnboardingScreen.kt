@@ -71,12 +71,6 @@ fun OnboardingScreen(onRequestDialerPermission: () -> Unit) {
             }
         }
 
-        Text(
-            text = "This is a Phone App developed by Talsk Research Inc. for demo purposes.",
-            textAlign = TextAlign.Center,
-            fontStyle = FontStyle.Italic,
-            fontWeight = FontWeight.SemiBold
-        )
     }
 
 }
