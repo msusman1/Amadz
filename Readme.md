@@ -3,7 +3,8 @@
 
 Welcome to **Amadz**! An alternative to the original ‘Phone’ app, designed to enhance the calling experience with rich customization options and a variety of additional features. Make it your own by adding new functionalities like call screening, call blocking, caller name announcement, and more. Your contributions can make this app a powerful tool for handling calls seamlessly.
 
-![Amadz Demo](https://github.com/msusman1/Amadz/tree/master/media/amdaz_calling_app-demo.webm)
+![App Screenshot](https://github.com/msusman1/webrtc-client/blob/master/media/app_screenshot.png)
+App Demo:https://github.com/msusman1/Amadz/tree/master/media/amdaz_calling_app-demo.webm
 
 ---
 
