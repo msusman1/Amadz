@@ -1,0 +1,12 @@
+Welcome to Amadz! An alternative to the original ‘Phone’ app, designed to enhance the calling experience with rich customization options and a variety of additional features. Make it your own by adding new functionalities like call screening, call blocking, caller name announcement, and more. Your contributions can make this app a powerful tool for handling calls seamlessly.
+
+Room for Growth: Clone and add custom features like:
+    - Call screening
+    - Call blocking and filtering
+    - Caller name announcement
+    - Custom ringtones and media on the call screen
+    - Enhanced call UI and more
+
+Current Capabilities:
+    - Clean, intuitive calling interface
+    - Basic calling functionality as an alternative to the default Phone app
