@@ -87,7 +87,7 @@ fun PermissionUI(onButtonClick: () -> Unit) {
         )
     },
         headlineContent = { Text(text = "Phone") },
-        supportingContent = { Text(text = "Amadz needs access to your phone to identify incoming calls and display caller information.") })
+        supportingContent = { Text(text = "Set Amadz as your default phone app for a seamless and personalized calling experience. Effortlessly manage calls, contacts, and essential phone functions with ease.") })
 
     ListItem(leadingContent = {
         Icon(
