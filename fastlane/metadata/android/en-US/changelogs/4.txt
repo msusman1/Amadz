@@ -1,0 +1,3 @@
+- Bump library and plugin versions
+- Minor UI fixes
+- Set Android target to the latest version
