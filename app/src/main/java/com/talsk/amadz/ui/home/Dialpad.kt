@@ -17,18 +17,14 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Backspace
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -180,7 +176,7 @@ fun RowScope.DialButton(title: String, subtitle: String, onClick: () -> Unit) {
             shape = ButtonDefaults.shape, color = MaterialTheme.colorScheme.background
         )
         .clip(RoundedCornerShape(16.dp))
-        .clickable(indication = rememberRipple(color = MaterialTheme.colorScheme.secondaryContainer),
+        .clickable(indication = ripple(color = MaterialTheme.colorScheme.secondaryContainer),
             interactionSource = remember { MutableInteractionSource() }) { onClick() },
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally

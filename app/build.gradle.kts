@@ -1,18 +1,28 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            keyAlias = "Amadz1122"
+            keyPassword = "Amadz1122"
+            storeFile = file("../signature/release.keystore")
+            storePassword = "Amadz1122"
+        }
+    }
+
     namespace = "com.talsk.amadz"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.talsk.amadz"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 2
-        versionName = "1.0.2"
+        targetSdk = 35
+        versionCode = 3
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -22,11 +32,13 @@ android {
 
     buildTypes {
         release {
+            isCrunchPngs = false
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
@@ -40,7 +52,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.3"
+        kotlinCompilerExtensionVersion = "1.5.15"
     }
     packaging {
         resources {
@@ -51,18 +63,18 @@ android {
 
 dependencies {
 
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
-    implementation("androidx.activity:activity-compose:1.8.1")
-    implementation(platform("androidx.compose:compose-bom:2023.10.01"))
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    implementation("androidx.activity:activity-compose:1.10.0")
+    implementation(platform("androidx.compose:compose-bom:2025.02.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.navigation:navigation-compose:2.7.5")
+    implementation("androidx.navigation:navigation-compose:2.8.7")
     testImplementation("junit:junit:4.13.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.core:core-splashscreen:1.0.1")
-    implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt.coil3:coil-compose:3.1.0")
 }
