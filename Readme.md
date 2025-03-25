@@ -3,6 +3,12 @@
 
 Welcome to **Amadz**! An alternative to the original ‘Phone’ app, designed to enhance the calling experience with rich customization options and a variety of additional features. Make it your own by adding new functionalities like call screening, call blocking, caller name announcement, and more. Your contributions can make this app a powerful tool for handling calls seamlessly.
 
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
+     alt="Get it on F-Droid"
+     height="80">](https://f-droid.org/packages/com.talsk.amadz/)
+
+Or download the latest APK from the [Releases Section](https://github.com/msusman1/Amadz/releases/latest).
+
 ![App Screenshot](https://github.com/msusman1/Amadz/blob/master/media/app_screenshot.png)
 
 ![App Demo](https://github.com/msusman1/Amadz/blob/master/media/amdaz_calling_app-demo.webm)
