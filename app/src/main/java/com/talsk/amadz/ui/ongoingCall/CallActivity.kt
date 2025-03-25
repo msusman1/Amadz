@@ -53,6 +53,8 @@ class CallActivity : ComponentActivity() {
                 setCallOnHold = vm::setCallOnHold,
                 setCallMute = { sendBroadcast(Intent(if (it) CALL_ACTION_MUTE else CALL_ACTION_UN_MUTE)) },
                 setSpeakerOn = { sendBroadcast(Intent(if (it) CALL_ACTION_SPEAKER_ON else CALL_ACTION_SPEAKER_OFF)) },
+                startTone = vm::startTone,
+                stopTone = vm::stopTone
             )
         }
         notificationManager = getSystemService(NotificationManager::class.java)
@@ -62,12 +64,12 @@ class CallActivity : ComponentActivity() {
     }
 
 
-
     private fun checkAirPlanAndSimStats() {
         val telephonyManager = getSystemService(TelephonyManager::class.java)
         if (telephonyManager.simState != TelephonyManager.SIM_STATE_READY) {
             alertDialog =
-                AlertDialog.Builder(this).setMessage(telephonyManager.simState.ToSimstateReadable()).setCancelable(false)
+                AlertDialog.Builder(this).setMessage(telephonyManager.simState.ToSimstateReadable())
+                    .setCancelable(false)
                     .setPositiveButton("Ok") { dialogInterface, _ ->
                         dialogInterface.dismiss()
                         if (vm.callState.value is CallUiState.CallDisconnected) {
@@ -95,6 +97,11 @@ class CallActivity : ComponentActivity() {
                     WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
         )
 
+    }
+
+    override fun onStop() {
+        super.onStop()
+        App.needDataReload = true
     }
 
 

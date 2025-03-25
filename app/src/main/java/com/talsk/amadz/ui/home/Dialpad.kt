@@ -1,15 +1,17 @@
 package com.talsk.amadz.ui.home
 
-import android.media.AudioManager
-import android.media.ToneGenerator
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,12 +24,15 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,14 +48,38 @@ import com.talsk.amadz.ui.IconButtonLongClickable
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun DialpadPrew() {
-    Dialpad("", {}, {})
+    Column {
+
+        Spacer(Modifier.height(48.dp))
+        Dialpad(
+            phone = "2345",
+            onTapDown = {},
+            onTapUp = {},
+            onBackSpaceClicked = {},
+            onClearClicked = {},
+            onCallClicked = {},
+            showClearButton = false,
+            showCallButton = false,
+        )
+    }
 }
 
+
 @Composable
-fun Dialpad(phone: String, onDialChange: (String) -> Unit, onCallDialed: (String) -> Unit) {
-    val toneGenerator = remember { ToneGenerator(AudioManager.STREAM_DTMF, 100) }
+fun Dialpad(
+    modifier: Modifier = Modifier,
+    phone: String,
+    onTapDown: (Char) -> Unit,
+    onTapUp: () -> Unit,
+    onBackSpaceClicked: () -> Unit,
+    onClearClicked: () -> Unit,
+    onCallClicked: () -> Unit,
+    showCallButton: Boolean,
+    showClearButton: Boolean,
+) {
+
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight()
             .padding(top = 16.dp, bottom = 32.dp, start = 16.dp, end = 16.dp),
@@ -68,18 +97,20 @@ fun Dialpad(phone: String, onDialChange: (String) -> Unit, onCallDialed: (String
                 style = MaterialTheme.typography.headlineMedium,
                 textAlign = TextAlign.Center
             )
-            IconButtonLongClickable(
-                modifier = Modifier.align(Alignment.CenterEnd),
-                onLongClick = { onDialChange("") },
-                onClick = {
-                    if (phone.isNotEmpty()) {
-                        onDialChange(phone.dropLast(1))
-                    }
-                },
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Backspace, contentDescription = "Call"
-                )
+            if (showClearButton) {
+                IconButtonLongClickable(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    onLongClick = onClearClicked,
+                    onClick = {
+                        if (phone.isNotEmpty()) {
+                            onBackSpaceClicked()
+                        }
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Backspace, contentDescription = "Call"
+                    )
+                }
             }
 
         }
@@ -87,102 +118,151 @@ fun Dialpad(phone: String, onDialChange: (String) -> Unit, onCallDialed: (String
             modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             DialButton(
-                "1",
-                ""
-            ) { onDialChange(phone + "1");toneGenerator.startTone(ToneGenerator.TONE_DTMF_1);toneGenerator.stopTone() }
-            DialButton(
-                "2",
-                "ABC"
-            ) { onDialChange(phone + "2");toneGenerator.startTone(ToneGenerator.TONE_DTMF_2);toneGenerator.stopTone() }
-            DialButton(
-                "3",
-                "DEF"
-            ) { onDialChange(phone + "3");toneGenerator.startTone(ToneGenerator.TONE_DTMF_3);toneGenerator.stopTone() }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            DialButton(
-                "4",
-                "GHI"
-            ) { onDialChange(phone + "4");toneGenerator.startTone(ToneGenerator.TONE_DTMF_4);toneGenerator.stopTone() }
-            DialButton(
-                "5",
-                "JKL"
-            ) { onDialChange(phone + "5");toneGenerator.startTone(ToneGenerator.TONE_DTMF_5);toneGenerator.stopTone() }
-            DialButton(
-                "6",
-                "MNO"
-            ) { onDialChange(phone + "6");toneGenerator.startTone(ToneGenerator.TONE_DTMF_6);toneGenerator.stopTone() }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            DialButton(
-                "7",
-                "PQRS"
-            ) { onDialChange(phone + "7");toneGenerator.startTone(ToneGenerator.TONE_DTMF_7);toneGenerator.stopTone() }
-            DialButton(
-                "8",
-                "TUV"
-            ) { onDialChange(phone + "8");toneGenerator.startTone(ToneGenerator.TONE_DTMF_8);toneGenerator.stopTone() }
-            DialButton(
-                "9",
-                "WXYZ"
-            ) { onDialChange(phone + "9");toneGenerator.startTone(ToneGenerator.TONE_DTMF_9);toneGenerator.stopTone() }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            DialButton(
-                "*",
-                ""
-            ) { onDialChange("$phone*");toneGenerator.startTone(ToneGenerator.TONE_DTMF_S);toneGenerator.stopTone() }
-            DialButton(
-                "0",
-                "+"
-            ) { onDialChange(phone + "0");toneGenerator.startTone(ToneGenerator.TONE_DTMF_0);toneGenerator.stopTone() }
-            DialButton(
-                "#",
-                ""
-            ) { onDialChange("$phone#");toneGenerator.startTone(ToneGenerator.TONE_DTMF_P);toneGenerator.stopTone() }
-        }
-        Button(
-            onClick = { onCallDialed(phone) },
-            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-            modifier = Modifier
-                .height(56.dp)
-                .align(Alignment.CenterHorizontally)
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.baseline_call_24),
-                contentDescription = "phone"
+                title = '1',
+                subtitle = "",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
             )
-            Text(text = "Call", modifier = Modifier.padding(start = 16.dp))
+            DialButton(
+                title = '2',
+                subtitle = "ABC",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
+            )
+            DialButton(
+                title = '3',
+                subtitle = "DEF",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            DialButton(
+                title = '4',
+                subtitle = "GHI",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
+            )
+            DialButton(
+                title = '5',
+                subtitle = "JKL",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
+            )
+            DialButton(
+                title = '6',
+                subtitle = "MNO",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            DialButton(
+                title = '7',
+                subtitle = "PQRS",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
+            )
+            DialButton(
+                title = '8',
+                subtitle = "TUV",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
+            )
+            DialButton(
+                title = '9',
+                subtitle = "WXYZ",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            DialButton(
+                title = '*',
+                subtitle = "",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
+            )
+            DialButton(
+                title = '0',
+                subtitle = "+",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
+            )
+            DialButton(
+                title = '#',
+                subtitle = "",
+                onTapDown = onTapDown,
+                onTapUp = onTapUp
+            )
+        }
+        if (showCallButton) {
+            Button(
+                onClick = { onCallClicked() },
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                modifier = Modifier
+                    .height(56.dp)
+                    .align(Alignment.CenterHorizontally)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.baseline_call_24),
+                    contentDescription = "phone"
+                )
+                Text(text = "Call", modifier = Modifier.padding(start = 16.dp))
+            }
         }
 
     }
 }
 
 @Composable
-fun RowScope.DialButton(title: String, subtitle: String, onClick: () -> Unit) {
+fun RowScope.DialButton(
+    title: Char,
+    subtitle: String,
+    onTapDown: (Char) -> Unit,
+    onTapUp: () -> Unit
+) {
+    var tapped by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
 
-    Column(modifier = Modifier
-        .weight(1f)
-        .height(56.dp)
-        .background(
-            shape = ButtonDefaults.shape, color = MaterialTheme.colorScheme.background
-        )
-        .clip(RoundedCornerShape(16.dp))
-        .clickable(indication = ripple(color = MaterialTheme.colorScheme.secondaryContainer),
-            interactionSource = remember { MutableInteractionSource() }) { onClick() },
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .height(56.dp)
+            .background(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.background,
+
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .indication(interactionSource, LocalIndication.current)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = { offset ->
+                        tapped = true
+                        val press = PressInteraction.Press(offset)
+                        interactionSource.emit(press)
+                        onTapDown(title)
+                        tryAwaitRelease()
+                        interactionSource.emit(PressInteraction.Release(press))
+                        onTapUp()
+                        tapped = false
+                    }
+                )
+            },
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = title,
+            text = title.toString(),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )

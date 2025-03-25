@@ -54,6 +54,14 @@ object CallManager {
     }
 
 
+    fun playDtmfTone(char: Char) {
+        sCall?.playDtmfTone(char)
+    }
+
+    fun stopDtmfTone() {
+        sCall?.stopDtmfTone()
+    }
+
     fun setCallOnHold(hold: Boolean) {
         if (hold) {
             sCall?.hold()

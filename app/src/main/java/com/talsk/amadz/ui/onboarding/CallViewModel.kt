@@ -117,6 +117,15 @@ class CallViewModel(phone: String, context: Context) : ViewModel() {
 
     }
 
+    fun startTone(char: Char) {
+        CallManager.playDtmfTone(char)
+    }
+
+    fun stopTone() {
+        CallManager.stopDtmfTone()
+    }
+
+
     override fun onCleared() {
         super.onCleared()
         timer?.cancel()
