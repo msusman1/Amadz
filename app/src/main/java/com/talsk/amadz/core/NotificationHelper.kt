@@ -26,6 +26,7 @@ import com.talsk.amadz.ui.ongoingCall.CallActivity
  * Created by Muhammad Usman : msusman97@gmail.com on 11/17/2023.
  */
 private const val INCOMING_CALL_NOTIFICATION_ID = 123
+private const val ONGOING_CALL_NOTIFICATION_ID = 124
 
 class NotificationHelper(private val context: Context) {
     private val callChannelId = "AMADZ_CALL_NOTIFICATION_ID"
@@ -118,8 +119,49 @@ class NotificationHelper(private val context: Context) {
         notificationManager.notify(INCOMING_CALL_NOTIFICATION_ID, builder.build())
     }
 
+    fun displayOngoingCallNotification(phone: String) {
+        val intent = Intent(Intent.ACTION_MAIN, null).apply {
+            flags = Intent.FLAG_ACTIVITY_NO_USER_ACTION or Intent.FLAG_ACTIVITY_NEW_TASK
+            setClass(context, CallActivity::class.java)
+            putExtra("phone", phone)
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            1,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val builder = NotificationCompat.Builder(context, callChannelId)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW) // ⬅️ Keep it subtle, just in status bar
+            .setContentIntent(pendingIntent)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setSmallIcon(R.drawable.app_logo_short_notification)
+            .setContentTitle("Ongoing Call")
+            .setContentText(phone)
+
+        val largeIcon = BitmapFactory.decodeResource(context.resources, R.drawable.profile_pic)
+        builder.setLargeIcon(largeIcon)
+
+        val contactData = contactsRepository.getContactData(phone)
+        if (contactData != null) {
+            builder.setContentText(contactData.name)
+            contactImageRepository.loadContactImage(contactData.image)?.let {
+                builder.setLargeIcon(it)
+            }
+        }
+
+        notificationManager.notify(ONGOING_CALL_NOTIFICATION_ID, builder.build())
+    }
+
     fun cancelIncommingCallNotification() {
         notificationManager.cancel(INCOMING_CALL_NOTIFICATION_ID)
+    }
+
+    fun cancelOngoingCallNotification() {
+        notificationManager.cancel(ONGOING_CALL_NOTIFICATION_ID)
     }
 
     fun playCallRingTone() {

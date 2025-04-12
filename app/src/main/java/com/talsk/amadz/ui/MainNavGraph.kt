@@ -14,6 +14,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -42,11 +43,17 @@ import com.talsk.amadz.ui.home.HomeScreen
 fun MainNavGraph(
     contacts: List<ContactData>,
     callLogs: List<CallLogData>,
-    onFavouriteToggle: (ContactData) -> Unit
+    onFavouriteToggle: (ContactData) -> Unit,
+    phoneNumber: String? = null
 ) {
     val navController = rememberNavController()
 
     val context = LocalContext.current
+    LaunchedEffect(phoneNumber) {
+        if (phoneNumber != null) {
+            navController.navigate("dial")
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -54,9 +61,8 @@ fun MainNavGraph(
         modifier = Modifier.statusBarsPadding()
     ) {
 
-
         composable("dial") {
-            DialpadScreen(contacts)
+            DialpadScreen(contacts, phoneNumber)
         }
         composable("home") {
             Column(
