@@ -88,6 +88,7 @@ class NotificationHelper(private val context: Context) {
         builder.setContentText(phone)
         if (contactData != null) {
             builder.setContentText(contactData.name)
+            builder.setSubText(contactData.companyName)
             val contactPic = contactImageRepository.loadContactImage(contactData.image)
             if (contactPic != null) {
                 builder.setLargeIcon(contactPic)
@@ -148,6 +149,7 @@ class NotificationHelper(private val context: Context) {
         val contactData = contactsRepository.getContactData(phone)
         if (contactData != null) {
             builder.setContentText(contactData.name)
+            builder.setSubText(contactData.companyName)
             contactImageRepository.loadContactImage(contactData.image)?.let {
                 builder.setLargeIcon(it)
             }
@@ -188,6 +190,7 @@ class NotificationHelper(private val context: Context) {
         builder.setAutoCancel(true)
         if (contactData != null) {
             builder.setContentText(contactData.name)
+            builder.setSubText(contactData.companyName)
             val contactPic = contactImageRepository.loadContactImage(contactData.image)
             if (contactPic != null) {
                 builder.setLargeIcon(contactPic)

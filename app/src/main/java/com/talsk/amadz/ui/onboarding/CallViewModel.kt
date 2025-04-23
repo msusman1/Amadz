@@ -32,10 +32,11 @@ class CallViewModel(phone: String, context: Context) : ViewModel() {
             secondsToReadableTime(it)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, "")
     var contactData = contactsRepository.getContactData(phone) ?: ContactData(
-        -1,
-        "Unknown",
-        phone,
-        null,
+        id = -1,
+        name = "Unknown",
+        companyName = "",
+        phone = phone,
+        image = null,
         isFavourite = false
     )
 
@@ -135,8 +136,9 @@ class CallViewModel(phone: String, context: Context) : ViewModel() {
 
 
 }
+
 class CallViewModelFactory(private val phone: String, private val context: Context) :
-   ViewModelProvider.Factory {
+    ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CallViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")

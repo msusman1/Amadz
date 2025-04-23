@@ -45,7 +45,6 @@ import com.talsk.amadz.ui.onboarding.CallUiState
 import com.talsk.amadz.ui.theme.AmadzTheme
 import com.talsk.amadz.ui.theme.green
 import com.talsk.amadz.ui.theme.red
-import com.talsk.amadz.util.toTone
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/17/2023.
@@ -58,6 +57,7 @@ private fun CallScreenPrev() {
         contact = ContactData(
             id = 232L,
             name = "ALi",
+            companyName = "Urban Soft",
             phone = "45678o",
             image = null,
             isFavourite = false
@@ -115,6 +115,8 @@ fun CallScreen(
                             TextOrBitmapDrawable(modifier = Modifier.size(96.dp), contact = contact)
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(contact.name, style = MaterialTheme.typography.titleLarge)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(contact.companyName, style = MaterialTheme.typography.titleMedium)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(contact.phone, style = MaterialTheme.typography.bodyLarge)
                             Spacer(modifier = Modifier.height(12.dp))

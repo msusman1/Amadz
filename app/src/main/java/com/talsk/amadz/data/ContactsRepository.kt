@@ -21,18 +21,20 @@ import java.util.Locale
 class ContactsRepository(val context: Context) {
     val TAG = "ContactsRepository"
 
+    private val projection = arrayOf(
+        ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+        ContactsContract.CommonDataKinds.Organization.DISPLAY_NAME,
+        ContactsContract.CommonDataKinds.Phone.NUMBER,
+        ContactsContract.CommonDataKinds.Phone.PHOTO_URI
+    )
+
     fun getAllContacts(): List<ContactData> {
         Log.d(TAG, "getAllContacts() called")
         val contactsList = mutableListOf<ContactData>()
 
         val contentResolver: ContentResolver = context.contentResolver
 
-        val projection = arrayOf(
-            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-            ContactsContract.CommonDataKinds.Phone.NUMBER,
-            ContactsContract.CommonDataKinds.Phone.PHOTO_URI
-        )
         val cursor: Cursor? = contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             projection,
@@ -42,30 +44,8 @@ class ContactsRepository(val context: Context) {
         )
 
         if (cursor != null) {
-
-            val idColumnIndex =
-                cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-            val nameColumnIndex =
-                cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-            val numberColumnIndex =
-                cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-            val photoUriColumnIndex =
-                cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI)
-
             while (cursor.moveToNext()) {
-                val contactId = cursor.getLong(idColumnIndex)
-                val contactName = cursor.getString(nameColumnIndex)
-                val contactNumber = cursor.getString(numberColumnIndex)
-                val photoUri = cursor.getStringOrNull(photoUriColumnIndex)?.toUri()
-//                val contactImage = contactImageRepository.loadContactImage(photoUri)
-                val contact = ContactData(
-                    contactId,
-                    contactName,
-                    contactNumber,
-                    photoUri,
-                    isFavourite = false
-                )
-                contactsList.add(contact)
+                contactsList.add(cursor.toContactData())
             }
             cursor.close()
         }
@@ -74,23 +54,42 @@ class ContactsRepository(val context: Context) {
 
     }
 
+    private fun getCompanyName(contactId: Long): String? {
+        val contentResolver = context.contentResolver
+        val orgWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " +
+                ContactsContract.Data.MIMETYPE + " = ?"
+        val orgWhereParams = arrayOf(
+            contactId.toString(),
+            ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE
+        )
+
+        val cursor = contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            null,
+            orgWhere,
+            orgWhereParams,
+            null
+        )
+
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val companyNameColumnIndex =
+                    it.getColumnIndex(ContactsContract.CommonDataKinds.Organization.COMPANY)
+                return it.getStringOrNull(companyNameColumnIndex)
+            }
+        }
+        return null
+    }
 
     fun getContactData(phoneNumber: String): ContactData? {
 
         val contentResolver: ContentResolver = context.contentResolver
-        // Define the columns you want to retrieve
-        val projection = arrayOf(
-            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-            ContactsContract.CommonDataKinds.Phone.NUMBER,
-            ContactsContract.CommonDataKinds.Phone.PHOTO_URI
-        )
+
         val normalizedPhone = normalizePhoneNumber(context, phoneNumber)
         val selection =
             "REPLACE(REPLACE(REPLACE(${ContactsContract.CommonDataKinds.Phone.NUMBER}, ' ', ''), '-', ''), '(', '') LIKE ?"
         val selectionArgs = arrayOf("%$normalizedPhone%") // Search for similar numbers
 
-        // Query the contacts
         val cursor: Cursor? = contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             projection,
@@ -101,32 +100,12 @@ class ContactsRepository(val context: Context) {
         var contactData: ContactData? = null
         cursor?.use {
             if (it.moveToFirst()) {
-                // Get the column indices
-                val idColumnIndex =
-                    it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-                val nameColumnIndex =
-                    it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-                val numberColumnIndex =
-                    it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                val photoUriColumnIndex =
-                    it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI)
-
-                // Retrieve the contact details
-                val contactId = it.getLong(idColumnIndex)
-                val contactName = it.getString(nameColumnIndex)
-                val contactNumber = it.getString(numberColumnIndex)
-                val photoUri = it.getStringOrNull(photoUriColumnIndex)?.toUri()
-//                val contactImage = contactImageRepository.loadContactImage(photoUri)
-                contactData = ContactData(
-                    contactId,
-                    contactName,
-                    contactNumber,
-                    photoUri,
-                    isFavourite = false
+                val oldContactData = it.toContactData()
+                contactData = oldContactData.copy(
+                    companyName = getCompanyName(oldContactData.id) ?: ""
                 )
             }
         }
-
         return contactData
 
     }
@@ -159,6 +138,35 @@ class ContactsRepository(val context: Context) {
             ?: "US" // Default to "US" if unknown
     }
 
+}
+
+
+fun Cursor.toContactData(): ContactData {
+    val idColumnIndex =
+        this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+    val nameColumnIndex =
+        this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+
+    val numberColumnIndex =
+        this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+    val photoUriColumnIndex =
+        this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI)
+
+    // Retrieve the contact details
+    val contactId = this.getLong(idColumnIndex)
+    val contactName = this.getString(nameColumnIndex)
+    val contactNumber = this.getString(numberColumnIndex)
+    val photoUri = this.getStringOrNull(photoUriColumnIndex)?.toUri()
+//                val contactImage = contactImageRepository.loadContactImage(photoUri)
+
+    return ContactData(
+        id = contactId,
+        name = contactName,
+        companyName = "",
+        phone = contactNumber,
+        image = photoUri,
+        isFavourite = false
+    )
 }
 
 fun Context.openContactDetailScreen(contactId: Long) {

@@ -14,6 +14,7 @@ import java.util.Locale
 data class ContactData(
     val id: Long,
     val name: String,
+    val companyName: String,
     val phone: String,
     val image: Uri?,
     val bgColor: Color = getRandomColor(),
@@ -34,6 +35,7 @@ data class CallLogData(
         return ContactData(
             id = id,
             name = name,
+            companyName = "",
             phone = phone,
             image = image,
             bgColor = bgColor,
@@ -63,7 +65,8 @@ enum class CallLogType {
 
 fun List<ContactData>.filterContacts(query: String): List<ContactData> {
     return this.filter {
-        it.name.lowercase().contains(query.lowercase()).or(it.phone.replace(" ","").contains(query))
+        it.name.lowercase().contains(query.lowercase())
+            .or(it.phone.replace(" ", "").contains(query))
     }
 }
 
