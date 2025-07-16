@@ -41,7 +41,13 @@ class MainActivity : ComponentActivity() {
                 Surface(
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
-                    MainNavGraph(contacts, callLogs, vm::toggleFavourite, phoneNumber = phoneNumber)
+                    MainNavGraph(
+                        contacts = contacts,
+                        callLogs = callLogs,
+                        onFavouriteToggle = vm::toggleFavourite,
+                        phoneNumber = phoneNumber,
+                        loadNextPage = vm::loadNextPage
+                    )
                 }
             }
         }

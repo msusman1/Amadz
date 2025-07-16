@@ -22,12 +22,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val callLogsRepository = CallLogsRepository(application.applicationContext)
     private val favouriteRepository = FavouriteRepository(application.applicationContext)
     var contacts = MutableStateFlow<List<ContactData>>(emptyList())
+    private val pageSize = 50
+    private var currentPage = 0
+    private var isLoading = false
+    private var allDataLoaded = false
+
     var callLogs = MutableStateFlow<List<CallLogData>>(emptyList())
+        private set
 
     init {
         loadData()
     }
 
+    fun loadNextPage() = viewModelScope.launch(Dispatchers.IO) {
+        if (isLoading || allDataLoaded) return@launch
+        isLoading = true
+
+        val nextLogs = callLogsRepository.getCallLogsPaged(limit = pageSize, offset = currentPage * pageSize)
+
+        if (nextLogs.isEmpty()) {
+            allDataLoaded = true
+        } else {
+            callLogs.update { it + nextLogs }
+            currentPage++
+        }
+
+        isLoading = false
+    }
     fun reloadData() {
         if (App.needDataReload) {
             loadData()
@@ -44,7 +65,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 it
             }
         }
-        callLogs.value = callLogsRepository.getAllCallLogs()
+        callLogs.value = emptyList()
+        currentPage = 0
+        allDataLoaded = false
+        loadNextPage()
 
     }
 

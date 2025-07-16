@@ -118,7 +118,8 @@ fun FavouriteItemGroup(contacts: List<ContactData>, onCallClick: (ContactData) -
 
 @Composable
 fun FavouriteItem(contact: ContactData, onCallClick: (ContactData) -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally,
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .padding(vertical = 16.dp, horizontal = 8.dp)
             .clickable() { onCallClick(contact) }) {
@@ -195,7 +196,8 @@ fun ContactItem(
     onCallClick: (ContactData) -> Unit,
     onFavouriteToggle: ((ContactData) -> Unit)? = null
 ) {
-    ListItem(modifier = Modifier.clickable { onContactDetailClick(contact) },
+    ListItem(
+        modifier = Modifier.clickable { onContactDetailClick(contact) },
         leadingContent = {
             TextOrBitmapDrawable(modifier = Modifier.size(56.dp), contact = contact)
         },
@@ -245,14 +247,28 @@ fun CallLogItem(
         },
         headlineContent = { Text(text = logData.name.takeIf { it.isNotEmpty() } ?: logData.phone) },
         supportingContent = {
-            Row {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+
                 Icon(
-                    modifier = Modifier.size(18.dp).padding(end = 4.dp),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .padding(end = 4.dp),
                     painter = painterResource(id = getCallIcon()),
                     tint = if (logData.callLogType == CallLogType.MISSED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground,
                     contentDescription = null
                 )
                 Text(text = logData.time.toReadableFormat())
+                if (logData.simSlot >= 0) {
+                    Text(
+                        text = "SIM ${logData.simSlot + 1}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
             }
 
         },

@@ -30,6 +30,7 @@ data class CallLogData(
     val callLogType: CallLogType,
     val time: Date,
     val callDuration: Long,
+    val simSlot:Int
 ) {
     fun toContactData(): ContactData {
         return ContactData(

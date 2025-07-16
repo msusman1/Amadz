@@ -4,16 +4,21 @@ import android.app.AlertDialog
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.telephony.TelephonyManager
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import com.talsk.amadz.App
 import com.talsk.amadz.core.CALL_ACTION_MUTE
 import com.talsk.amadz.core.CALL_ACTION_SPEAKER_OFF
@@ -34,11 +39,15 @@ class CallActivity : ComponentActivity() {
     lateinit var notificationManager: NotificationManager
     var alertDialog: AlertDialog? = null
 
+    private lateinit var sensorManager: SensorManager
+    private var proximitySensor: Sensor? = null
+    private var proximityListener: SensorEventListener? = null
+    private var proximityWakeLock: PowerManager.WakeLock? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            val currentActivity = LocalContext.current as? CallActivity
+            val currentActivity = LocalActivity.current as? CallActivity
             val uiState by vm.callState.collectAsState()
             val callTime by vm.callTime.collectAsState()
             if (uiState is CallUiState.CallDisconnected && alertDialog == null) {
@@ -62,6 +71,44 @@ class CallActivity : ComponentActivity() {
         clearNotification()
         addLockScreenFlag()
         checkAirPlanAndSimStats()
+        setUpSensor()
+    }
+
+    private fun setUpSensor() {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        proximityWakeLock = powerManager.newWakeLock(
+            PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
+            "YourApp::ProximityLock"
+        )
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
+
+        if (proximitySensor != null) {
+            proximityListener = object : SensorEventListener {
+                override fun onSensorChanged(event: SensorEvent) {
+                    if (event.sensor.type == Sensor.TYPE_PROXIMITY) {
+                        val isNear = event.values[0] < proximitySensor!!.maximumRange
+                        if (isNear) {
+                            if (proximityWakeLock?.isHeld == false) {
+                                proximityWakeLock?.acquire()
+                            }
+                        } else {
+                            if (proximityWakeLock?.isHeld == true) {
+                                proximityWakeLock?.release()
+                            }
+                        }
+                    }
+                }
+
+                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+            }
+
+            sensorManager.registerListener(
+                proximityListener,
+                proximitySensor,
+                SensorManager.SENSOR_DELAY_NORMAL
+            )
+        }
     }
 
 
@@ -107,6 +154,13 @@ class CallActivity : ComponentActivity() {
         App.needDataReload = true
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        proximityListener?.let { sensorManager.unregisterListener(it) }
+        if (proximityWakeLock?.isHeld == true) {
+            proximityWakeLock?.release()
+        }
+    }
 
     companion object {
         fun start(context: Context, phone: String) {

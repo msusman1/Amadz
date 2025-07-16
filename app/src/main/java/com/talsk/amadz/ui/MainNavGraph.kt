@@ -44,7 +44,8 @@ fun MainNavGraph(
     contacts: List<ContactData>,
     callLogs: List<CallLogData>,
     onFavouriteToggle: (ContactData) -> Unit,
-    phoneNumber: String? = null
+    phoneNumber: String? = null,
+    loadNextPage: () -> Unit,
 ) {
     val navController = rememberNavController()
 
@@ -123,7 +124,8 @@ fun MainNavGraph(
                     onFavouriteToggle = onFavouriteToggle,
                     dailButtonClicked = {
                         navController.navigate("dial")
-                    }
+                    },
+                    loadNextPage=loadNextPage,
                 )
             }
         }

@@ -18,6 +18,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -49,6 +50,7 @@ fun HomeScreen(
     onFavouriteToggle: (ContactData) -> Unit,
     onContactDetailClick: (ContactData) -> Unit,
     dailButtonClicked: () -> Unit,
+    loadNextPage: () -> Unit,
 ) {
     val favourites: List<ContactData> =
         remember(key1 = contacts) { contacts.filter { it.isFavourite } }
@@ -123,14 +125,16 @@ fun HomeScreen(
                         }
                     } else {
                         items(favourites.chunked(3)) { contacts ->
-                            FavouriteItemGroup(contacts = contacts,
+                            FavouriteItemGroup(
+                                contacts = contacts,
                                 onCallClick = { context.dial(it.phone) })
                         }
                     }
                     item {
                         HeaderItem(text = "Frequents")
                     }
-                    items(callLogs.filter { it.name.isNotEmpty() }
+                    items(
+                        callLogs.filter { it.name.isNotEmpty() }
                         .groupBy { it.phone }.values.sortedBy { it.size }.take(5)
                         .mapNotNull { it.firstOrNull() }
                     ) { callLog ->
@@ -152,17 +156,24 @@ fun HomeScreen(
                             item { HeaderItem(text = "Today") }
                         }
                         items(today) { callLog ->
-                            CallLogItem(logData = callLog,
+                            CallLogItem(
+                                logData = callLog,
                                 onCallClick = { context.dial(it.phone) })
                         }
                         if (older.isNotEmpty()) {
                             item { HeaderItem(text = "Older") }
                         }
                         items(older) { callLog ->
-                            CallLogItem(logData = callLog,
+                            CallLogItem(
+                                logData = callLog,
                                 onCallClick = { context.dial(it.phone) })
                         }
                         item { EmptyContactItem() }
+                        item {
+                            LaunchedEffect(Unit) {
+                                loadNextPage()
+                            }
+                        }
                     }
                 }
             }

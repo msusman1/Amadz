@@ -51,6 +51,7 @@ class ContactsRepository(val context: Context) {
         }
 
         return contactsList.distinctBy { it.id }
+            .sortedBy { it.name.lowercase() }
 
     }
 

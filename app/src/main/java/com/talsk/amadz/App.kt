@@ -9,12 +9,12 @@ import com.talsk.amadz.core.NotificationHelper
  * Created by Muhammad Usman : msusman97@gmail.com on 11/17/2023.
  */
 class App : Application() {
-     lateinit var notificationHelper: NotificationHelper
+    lateinit var notificationHelper: NotificationHelper
 
     companion object {
         var isAppInForeground = false
         lateinit var instance: App
-        var needDataReload:Boolean=false
+        var needDataReload: Boolean = false
     }
 
     override fun onCreate() {
