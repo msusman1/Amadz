@@ -38,7 +38,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (isLoading || allDataLoaded) return@launch
         isLoading = true
 
-        val nextLogs = callLogsRepository.getCallLogsPaged(limit = pageSize, offset = currentPage * pageSize)
+        val nextLogs =
+            callLogsRepository.getCallLogsPaged(limit = pageSize, offset = currentPage * pageSize)
 
         if (nextLogs.isEmpty()) {
             allDataLoaded = true
@@ -49,6 +50,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         isLoading = false
     }
+
     fun reloadData() {
         if (App.needDataReload) {
             loadData()
@@ -57,9 +59,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun loadData() = viewModelScope.launch(Dispatchers.IO) {
-        val favIds = favouriteRepository.getAllFavourites()
+        val favourites = favouriteRepository.getAllFavourites()
         contacts.value = contactsRepository.getAllContacts().map {
-            if (favIds.contains(it.id)) {
+            if (favourites.map { it.id }.contains(it.id)) {
                 it.copy(isFavourite = true)
             } else {
                 it

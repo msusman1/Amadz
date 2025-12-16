@@ -1,38 +1,86 @@
 package com.talsk.amadz.data
 
+import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
-import androidx.core.content.edit
+import android.provider.ContactsContract
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/22/2023.
  */
-class FavouriteRepository(val context: Context) {
-    private var favContactIds = mutableSetOf<Long>()
-    private val prefs = context.getSharedPreferences("amadx", Context.MODE_PRIVATE)
-    val FAV = "favs"
+class FavouriteRepository(private val context: Context) {
 
-    init {
+    private val contentResolver = context.contentResolver
 
-        val stringSet = prefs.getStringSet(FAV, emptySet()) ?: emptySet()
-        favContactIds.addAll(stringSet.map { it.toLong() }.toSet())
+    /**
+     * Mark contact as favourite (STARRED = 1)
+     */
+    fun addToFav(contactId: Long) {
+        updateStarred(contactId, true)
     }
 
-    fun addToFav(id: Long) {
-        favContactIds.add(id)
-        prefs.edit {
-            putStringSet(FAV, favContactIds.map { it.toString() }.toSet())
+    /**
+     * Remove contact from favourites (STARRED = 0)
+     */
+    fun removeFromFav(contactId: Long) {
+        updateStarred(contactId, false)
+    }
+
+    /**
+     * Toggle favourite state
+     */
+    fun toggleFavourite(contactId: Long, makeFavourite: Boolean) {
+        updateStarred(contactId, makeFavourite)
+    }
+
+    /**
+     * Get all favourite contacts as ContactData list
+     */
+    fun getAllFavourites(): List<ContactData> {
+        val favourites = mutableListOf<ContactData>()
+
+        val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+            ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ContactsContract.CommonDataKinds.Phone.PHOTO_URI,
+            ContactsContract.Contacts.STARRED
+        )
+
+        val selection = "${ContactsContract.Contacts.STARRED} = 1"
+
+        val cursor = contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            projection,
+            selection,
+            null,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+        )
+
+        cursor?.use {
+            while (it.moveToNext()) {
+                favourites.add(it.toContactData())
+            }
         }
 
+        // One contact may have multiple numbers → dedupe
+        return favourites.distinctBy { it.id }
     }
 
-    fun removeFromFav(id: Long) {
-        favContactIds.remove(id)
-        prefs.edit {
-            putStringSet(FAV, favContactIds.map { it.toString() }.toSet())
+    /**
+     * Internal helper to update STARRED flag
+     */
+    private fun updateStarred(contactId: Long, starred: Boolean) {
+        val values = ContentValues().apply {
+            put(ContactsContract.Contacts.STARRED, if (starred) 1 else 0)
         }
+
+        val uri = ContentUris.withAppendedId(
+            ContactsContract.Contacts.CONTENT_URI,
+            contactId
+        )
+
+        contentResolver.update(uri, values, null, null)
     }
 
-    fun getAllFavourites(): Set<Long> {
-        return favContactIds
-    }
 }

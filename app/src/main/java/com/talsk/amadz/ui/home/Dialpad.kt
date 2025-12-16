@@ -230,7 +230,6 @@ fun RowScope.DialButton(
     onTapDown: (Char) -> Unit,
     onTapUp: () -> Unit
 ) {
-    var tapped by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
 
     Column(
@@ -241,20 +240,18 @@ fun RowScope.DialButton(
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.background,
 
-            )
+                )
             .clip(RoundedCornerShape(16.dp))
             .indication(interactionSource, LocalIndication.current)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = { offset ->
-                        tapped = true
                         val press = PressInteraction.Press(offset)
                         interactionSource.emit(press)
                         onTapDown(title)
                         tryAwaitRelease()
                         interactionSource.emit(PressInteraction.Release(press))
                         onTapUp()
-                        tapped = false
                     }
                 )
             },
@@ -268,5 +265,4 @@ fun RowScope.DialButton(
         )
         Text(text = subtitle, style = MaterialTheme.typography.bodySmall)
     }
-
 }

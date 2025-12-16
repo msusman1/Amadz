@@ -26,7 +26,8 @@ class ContactsRepository(val context: Context) {
         ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
         ContactsContract.CommonDataKinds.Organization.DISPLAY_NAME,
         ContactsContract.CommonDataKinds.Phone.NUMBER,
-        ContactsContract.CommonDataKinds.Phone.PHOTO_URI
+        ContactsContract.CommonDataKinds.Phone.PHOTO_URI,
+        ContactsContract.Contacts.STARRED
     )
 
     fun getAllContacts(): List<ContactData> {
@@ -153,20 +154,23 @@ fun Cursor.toContactData(): ContactData {
     val photoUriColumnIndex =
         this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI)
 
+    val starredColumnIndex =
+        getColumnIndexOrThrow(ContactsContract.Contacts.STARRED) // ✅ NEW
+
     // Retrieve the contact details
     val contactId = this.getLong(idColumnIndex)
     val contactName = this.getString(nameColumnIndex)
     val contactNumber = this.getString(numberColumnIndex)
     val photoUri = this.getStringOrNull(photoUriColumnIndex)?.toUri()
 //                val contactImage = contactImageRepository.loadContactImage(photoUri)
-
+    val isFavourite = getInt(starredColumnIndex) == 1
     return ContactData(
         id = contactId,
         name = contactName,
         companyName = "",
         phone = contactNumber,
         image = photoUri,
-        isFavourite = false
+        isFavourite = isFavourite
     )
 }
 
