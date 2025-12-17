@@ -1,39 +1,24 @@
 package com.talsk.amadz.ui
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.talsk.amadz.core.dial
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.ui.NavDisplay
 import com.talsk.amadz.data.CallLogData
 import com.talsk.amadz.data.ContactData
-import com.talsk.amadz.data.filterContacts
-import com.talsk.amadz.data.openContactDetailScreen
-import com.talsk.amadz.ui.home.ContactItem
-import com.talsk.amadz.ui.home.DialpadScreen
-import com.talsk.amadz.ui.home.HeaderItem
+import com.talsk.amadz.ui.home.DialPadScreen
 import com.talsk.amadz.ui.home.HomeScreen
+import kotlinx.serialization.Serializable
+
+
+@Serializable
+data object DialPadKey : NavKey
+
+@Serializable
+data object HomeKey : NavKey
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/16/2023.
@@ -47,87 +32,32 @@ fun MainNavGraph(
     phoneNumber: String? = null,
     loadNextPage: () -> Unit,
 ) {
-    val navController = rememberNavController()
 
-    val context = LocalContext.current
+    val backStack = rememberNavBackStack(HomeKey)
     LaunchedEffect(phoneNumber) {
         if (phoneNumber != null) {
-            navController.navigate("dial")
+            backStack.add(DialPadKey)
         }
     }
 
-    NavHost(
-        navController = navController,
-        startDestination = "home",
-        modifier = Modifier.statusBarsPadding()
-    ) {
-
-        composable("dial") {
-            DialpadScreen(contacts, phoneNumber)
-        }
-        composable("home") {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                var text by rememberSaveable { mutableStateOf("") }
-                var active by rememberSaveable { mutableStateOf(false) }
-
-                SearchBar(
-                    query = text,
-                    onQueryChange = { text = it },
-                    onSearch = { active = false },
-                    active = active,
-                    onActiveChange = {
-                        active = it
-                    },
-                    placeholder = { Text("Search Contacts") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (active) {
-                            IconButton(onClick = {
-                                if (text.isEmpty().not()) {
-                                    text = ""
-                                } else {
-                                    active = false
-                                }
-                            }) {
-                                Icon(Icons.Default.Close, contentDescription = null)
-                            }
-                        }
-                    },
-                ) {
-                    val filteredContacts = contacts.filterContacts(text)
-                    if (filteredContacts.isNotEmpty()) {
-                        HeaderItem(text = "All Contacts")
-                    }
-                    LazyColumn {
-                        items(filteredContacts) { contact ->
-                            ContactItem(
-                                contact = contact,
-                                onContactDetailClick = {
-                                    context.openContactDetailScreen(it.id)
-                                },
-                                onCallClick = { context.dial(it.phone) },
-                                onFavouriteToggle = onFavouriteToggle
-                            )
-                        }
-                    }
-                }
-
+    NavDisplay(
+        backStack = backStack,
+        entryProvider = entryProvider {
+            entry<HomeKey> {
                 HomeScreen(
                     contacts = contacts,
                     callLogs = callLogs,
-                    onContactDetailClick = {
-                        context.openContactDetailScreen(it.id)
-                    },
                     onFavouriteToggle = onFavouriteToggle,
                     dailButtonClicked = {
-                        navController.navigate("dial")
+                        backStack.add(DialPadKey)
                     },
-                    loadNextPage=loadNextPage,
+                    loadNextPage = loadNextPage,
                 )
             }
+            entry<DialPadKey> {
+                DialPadScreen(contacts, phoneNumber)
+            }
         }
-    }
+    )
+
 }

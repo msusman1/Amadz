@@ -28,17 +28,27 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.navigation3.runtime.NavKey
 import coil3.compose.AsyncImage
 import com.talsk.amadz.R
 import com.talsk.amadz.data.CallLogData
 import com.talsk.amadz.data.CallLogType
 import com.talsk.amadz.data.ContactData
 import com.talsk.amadz.data.toReadableFormat
+import kotlinx.serialization.Serializable
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/18/2023.
  */
 
+@Serializable
+data object FavouritesKey : NavKey
+
+@Serializable
+data object RecentsKey : NavKey
+
+@Serializable
+data object ContactsKey : NavKey
 
 fun homeRoutes(): List<BottomNavMenu> {
 
@@ -47,28 +57,29 @@ fun homeRoutes(): List<BottomNavMenu> {
             icon = R.drawable.baseline_star_border_24,
             iconSelected = R.drawable.baseline_star_24,
             label = "Favourites",
-            route = "favourite"
+            navKey = FavouritesKey
         ),
         BottomNavMenu(
             icon = R.drawable.baseline_access_time_24,
             iconSelected = R.drawable.baseline_access_time_filled_24,
             label = "Recents",
-            route = "recent"
+            navKey = RecentsKey
         ),
 
         BottomNavMenu(
             icon = R.drawable.outline_people_alt_24,
             iconSelected = R.drawable.baseline_people_alt_24,
             label = "Contacts",
-            route = "contact"
+            navKey = ContactsKey
         ),
 
         )
 }
 
 data class BottomNavMenu(
-    val icon: Int, val iconSelected: Int, val label: String, val route: String
+    val icon: Int, val iconSelected: Int, val label: String, val navKey: NavKey
 )
+
 
 @Composable
 fun HeaderItem(text: String) {
@@ -85,7 +96,6 @@ fun EmptyContactItem() {
     Spacer(
         modifier = Modifier.size(56.dp),
     )
-
 }
 
 
@@ -283,15 +293,6 @@ fun CallLogItem(
         })
 }
 
-@Composable
-fun LoadingIndicator() {
-    Column(
-        modifier = Modifier.padding(vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
 
-        CircularProgressIndicator()
-    }
-}
 
 

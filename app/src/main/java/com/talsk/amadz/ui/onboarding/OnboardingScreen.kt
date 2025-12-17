@@ -75,38 +75,3 @@ fun OnboardingScreen(onRequestDialerPermission: () -> Unit) {
 
 }
 
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun PermissionUI(onButtonClick: () -> Unit) {
-
-    Spacer(modifier = Modifier.height(56.dp))
-    ListItem(leadingContent = {
-        Icon(
-            imageVector = Icons.Outlined.Phone, contentDescription = "Phone"
-        )
-    },
-        headlineContent = { Text(text = "Phone") },
-        supportingContent = { Text(text = "Set Amadz as your default phone app for a seamless and personalized calling experience. Effortlessly manage calls, contacts, and essential phone functions with ease.") })
-
-    ListItem(leadingContent = {
-        Icon(
-            imageVector = Icons.Outlined.Refresh, contentDescription = "Call Logs"
-        )
-    },
-        headlineContent = { Text(text = "Call Logs") },
-        supportingContent = { Text(text = "Amadz Require Call Logs Permission for managing call logs") })
-    ListItem(leadingContent = {
-        Icon(
-            imageVector = Icons.Outlined.Person, contentDescription = "Contact"
-        )
-    },
-        headlineContent = { Text(text = "Contacts") },
-        supportingContent = { Text(text = "Amadz needs Contacts Permission for managing Contacts") })
-    Spacer(modifier = Modifier.height(16.dp))
-
-    Button(onClick = onButtonClick) {
-        Text(text = "Grant Permissions")
-    }
-
-}

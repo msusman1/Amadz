@@ -5,6 +5,8 @@ import android.media.ToneGenerator
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.BottomSheetDefaults
@@ -13,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
@@ -30,8 +33,8 @@ import com.talsk.amadz.R
 import com.talsk.amadz.core.dial
 import com.talsk.amadz.data.ContactData
 import com.talsk.amadz.data.filterContacts
-import com.talsk.amadz.data.openContactAddScreen
-import com.talsk.amadz.data.openContactDetailScreen
+import com.talsk.amadz.ui.extensions.openContactAddScreen
+import com.talsk.amadz.ui.extensions.openContactDetailScreen
 import com.talsk.amadz.util.toTone
 
 /**
@@ -39,7 +42,7 @@ import com.talsk.amadz.util.toTone
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DialpadScreen(contacts: List<ContactData>, phone: String?) {
+fun DialPadScreen(contacts: List<ContactData>, phone: String?) {
     val bottomSheetScaffoldState =
         rememberBottomSheetScaffoldState(rememberStandardBottomSheetState(skipHiddenState = false))
     val context = LocalContext.current
@@ -50,10 +53,10 @@ fun DialpadScreen(contacts: List<ContactData>, phone: String?) {
         bottomSheetScaffoldState.bottomSheetState.expand()
     })
     BottomSheetScaffold(
+        modifier = Modifier.statusBarsPadding(),
         sheetContent = {
             Dialpad(
                 phone = dialPhone,
-
                 onTapDown = {
                     dialPhone += it
                     toneGenerator.startTone(it.toTone())
@@ -74,8 +77,6 @@ fun DialpadScreen(contacts: List<ContactData>, phone: String?) {
         },
         sheetShape = BottomSheetDefaults.HiddenShape,
         sheetPeekHeight = 0.dp,
-        containerColor = MaterialTheme.colorScheme.surface,
-        sheetTonalElevation = 0.dp,
         sheetDragHandle = null,
         scaffoldState = bottomSheetScaffoldState,
     ) {

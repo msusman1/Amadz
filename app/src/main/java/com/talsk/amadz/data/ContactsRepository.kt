@@ -174,21 +174,3 @@ fun Cursor.toContactData(): ContactData {
     )
 }
 
-fun Context.openContactDetailScreen(contactId: Long) {
-    App.needDataReload = true
-    val intent = Intent(Intent.ACTION_VIEW)
-    val contactUri = ContactsContract.Contacts.CONTENT_URI.buildUpon()
-        .appendPath(contactId.toString())
-        .build()
-    intent.data = contactUri
-    startActivity(intent)
-}
-
-fun Context.openContactAddScreen(phone: String) {
-    App.needDataReload = true
-    val intent = Intent(Intent.ACTION_INSERT)
-    intent.type = ContactsContract.Contacts.CONTENT_TYPE
-
-    intent.putExtra(ContactsContract.Intents.Insert.PHONE, phone)
-    startActivity(intent)
-}

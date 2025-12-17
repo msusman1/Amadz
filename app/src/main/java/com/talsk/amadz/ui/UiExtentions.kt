@@ -1,7 +1,6 @@
 package com.talsk.amadz.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -66,7 +65,6 @@ fun IconButtonLongClickable(
         modifier = modifier
             .minimumInteractiveComponentSize()
             .size(40.0.dp)
-            .background(color = MaterialTheme.colorScheme.background)
             .combinedClickable(
                 onLongClick = onLongClick,
                 onClick = onClick,
@@ -80,7 +78,6 @@ fun IconButtonLongClickable(
             ),
         contentAlignment = Alignment.Center
     ) {
-        val contentColor = MaterialTheme.colorScheme.onBackground
-        CompositionLocalProvider(LocalContentColor provides contentColor, content = content)
+        content()
     }
 }
