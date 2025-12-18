@@ -23,14 +23,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.talsk.amadz.R
 import com.talsk.amadz.data.CallLogData
 import com.talsk.amadz.data.ContactData
 import com.talsk.amadz.ui.components.HomeSearchBar
+import com.talsk.amadz.ui.home.favourite.FavouritesScreen
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/18/2023.
@@ -100,6 +103,10 @@ fun HomeScreen(
         NavDisplay(
             backStack = backStack,
             modifier = Modifier.padding(paddingValues),
+            entryDecorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator()
+            ),
             entryProvider = entryProvider {
                 entry(FavouritesKey) {
                     FavouritesScreen(favourites = favourites, callLogs = callLogs)

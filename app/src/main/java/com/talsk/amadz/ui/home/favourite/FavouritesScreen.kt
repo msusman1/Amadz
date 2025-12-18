@@ -1,4 +1,4 @@
-package com.talsk.amadz.ui.home
+package com.talsk.amadz.ui.home.favourite
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +22,10 @@ import com.talsk.amadz.core.dial
 import com.talsk.amadz.data.CallLogData
 import com.talsk.amadz.data.ContactData
 import com.talsk.amadz.ui.extensions.openContactDetailScreen
+import com.talsk.amadz.ui.home.ContactItem
+import com.talsk.amadz.ui.home.EmptyContactItem
+import com.talsk.amadz.ui.home.FavouriteItemGroup
+import com.talsk.amadz.ui.home.HeaderItem
 import kotlin.collections.chunked
 
 @Composable
