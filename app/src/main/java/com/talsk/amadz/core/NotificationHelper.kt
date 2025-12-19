@@ -6,11 +6,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
-import android.media.AudioAttributes
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.os.Build
-import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.DEFAULT_SOUND
 import androidx.core.app.NotificationCompat.DEFAULT_VIBRATE
@@ -18,7 +16,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.talsk.amadz.MainActivity
 import com.talsk.amadz.R
 import com.talsk.amadz.data.ContactImageRepository
-import com.talsk.amadz.data.ContactsRepository
+import com.talsk.amadz.data.ContactsRepositoryImpl
 import com.talsk.amadz.ui.ongoingCall.CallActivity
 
 
@@ -33,7 +31,7 @@ class NotificationHelper(private val context: Context) {
     private val callChannelName = "AMADZ_CALL_NOTIFICATION"
     private val notificationManager: NotificationManager =
         context.getSystemService(NotificationManager::class.java)
-    private val contactsRepository = ContactsRepository(context)
+    private val contactsRepositoryImpl = ContactsRepositoryImpl(context)
     private val contactImageRepository = ContactImageRepository(context)
     private var ringtone: Ringtone? = null
 
@@ -84,7 +82,7 @@ class NotificationHelper(private val context: Context) {
         builder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         val largeIcon = BitmapFactory.decodeResource(context.resources, R.drawable.profile_pic)
         builder.setLargeIcon(largeIcon)
-        val contactData = contactsRepository.getContactData(phone)
+        val contactData = contactsRepositoryImpl.getContactByPhone(phone)
         builder.setContentText(phone)
         if (contactData != null) {
             builder.setContentText(contactData.name)
@@ -146,7 +144,7 @@ class NotificationHelper(private val context: Context) {
         val largeIcon = BitmapFactory.decodeResource(context.resources, R.drawable.profile_pic)
         builder.setLargeIcon(largeIcon)
 
-        val contactData = contactsRepository.getContactData(phone)
+        val contactData = contactsRepositoryImpl.getContactByPhone(phone)
         if (contactData != null) {
             builder.setContentText(contactData.name)
             builder.setSubText(contactData.companyName)
@@ -185,7 +183,7 @@ class NotificationHelper(private val context: Context) {
         )
         val builder = NotificationCompat.Builder(context, callChannelId)
         builder.setContentIntent(pendingIntent)
-        val contactData = contactsRepository.getContactData(phone)
+        val contactData = contactsRepositoryImpl.getContactByPhone(phone)
         builder.setContentText(phone)
         builder.setAutoCancel(true)
         if (contactData != null) {

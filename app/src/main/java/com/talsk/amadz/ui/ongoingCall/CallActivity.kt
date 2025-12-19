@@ -27,14 +27,13 @@ import com.talsk.amadz.core.CALL_ACTION_UN_MUTE
 import com.talsk.amadz.ui.onboarding.CallUiState
 import com.talsk.amadz.ui.onboarding.CallViewModel
 import com.talsk.amadz.ui.onboarding.CallViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class CallActivity : ComponentActivity() {
     val phone: String by lazy { intent.getStringExtra("phone") ?: "" }
     private val vm: CallViewModel by viewModels(factoryProducer = {
-        CallViewModelFactory(
-            phone,
-            applicationContext
-        )
+        CallViewModelFactory(phone)
     })
     lateinit var notificationManager: NotificationManager
     var alertDialog: AlertDialog? = null
@@ -45,7 +44,6 @@ class CallActivity : ComponentActivity() {
     private var proximityWakeLock: PowerManager.WakeLock? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             val currentActivity = LocalActivity.current as? CallActivity
             val uiState by vm.callState.collectAsState()
@@ -75,12 +73,12 @@ class CallActivity : ComponentActivity() {
     }
 
     private fun setUpSensor() {
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        val powerManager = getSystemService(POWER_SERVICE) as PowerManager
         proximityWakeLock = powerManager.newWakeLock(
             PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
             "YourApp::ProximityLock"
         )
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         proximitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY)
 
         if (proximitySensor != null) {

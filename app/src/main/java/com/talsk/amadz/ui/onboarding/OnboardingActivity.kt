@@ -14,35 +14,37 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.talsk.amadz.MainActivity
 import com.talsk.amadz.ui.theme.AmadzTheme
 import com.talsk.amadz.util.PermissionChecker
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class OnboardingActivity : ComponentActivity() {
 
-
-    private val dialerLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult(), ::handleActivityResult
-    )
-
-    private fun handleActivityResult(activityResult: ActivityResult) {
-        if (activityResult.resultCode == RESULT_OK) {
-            startActivity(Intent(this, MainActivity::class.java)).also { finish() }
+    private val dialerLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            if (it.resultCode == RESULT_OK) {
+                navigateToMain()
+            }
         }
-    }
+
+    private val dialerRequestIntent: Intent
+        get() = PermissionChecker.changeDialogRequestUiIntent(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             AmadzTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
-                ) {
-                    OnboardingScreen(onRequestDialerPermission = {
-                        dialerLauncher.launch(PermissionChecker.changeDialogRequestUiIntent(this))
+                OnboardingScreen(
+                    onRequestDialerPermission = {
+                        dialerLauncher.launch(dialerRequestIntent)
                     })
-                }
             }
         }
     }
 
+    private fun navigateToMain() {
+        startActivity(Intent(this, MainActivity::class.java))
+        finish()
+    }
 
 }
 

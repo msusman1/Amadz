@@ -42,16 +42,22 @@ import com.talsk.amadz.util.toTone
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DialPadScreen(contacts: List<ContactData>, phone: String?) {
+fun DialPadScreen(contacts: List<ContactData>, phoneNumber: String?, onConsumed: () -> Unit) {
     val bottomSheetScaffoldState =
         rememberBottomSheetScaffoldState(rememberStandardBottomSheetState(skipHiddenState = false))
     val context = LocalContext.current
-    var dialPhone by remember { mutableStateOf(phone ?: "") }
+    var dialPhone by remember { mutableStateOf(phoneNumber ?: "") }
     val filteredContacts by remember(dialPhone) { mutableStateOf(contacts.filterContacts(dialPhone)) }
     val toneGenerator = remember { ToneGenerator(AudioManager.STREAM_DTMF, 100) }
     LaunchedEffect(key1 = true, block = {
         bottomSheetScaffoldState.bottomSheetState.expand()
     })
+    LaunchedEffect(phoneNumber) {
+        if (phoneNumber != null) {
+            // prefill dialpad
+            onConsumed()
+        }
+    }
     BottomSheetScaffold(
         modifier = Modifier.statusBarsPadding(),
         sheetContent = {

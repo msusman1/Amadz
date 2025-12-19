@@ -8,8 +8,10 @@ import androidx.lifecycle.viewModelScope
 import com.talsk.amadz.App
 import com.talsk.amadz.core.CallManager
 import com.talsk.amadz.data.ContactData
-import com.talsk.amadz.data.ContactsRepository
+import com.talsk.amadz.data.ContactsRepositoryImpl
+import com.talsk.amadz.domain.repos.ContactRepository
 import com.talsk.amadz.util.secondsToReadableTime
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,20 +20,25 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import java.util.Timer
 import java.util.TimerTask
+import javax.inject.Inject
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/17/2023.
  */
-class CallViewModel(phone: String, context: Context) : ViewModel() {
+
+@HiltViewModel
+class CallViewModel @Inject constructor(
+    private val contactsRepository: ContactRepository,
+    phone: String,
+) : ViewModel() {
     private val _callState: MutableStateFlow<CallUiState> = MutableStateFlow(CallUiState.Initial)
     val callState: StateFlow<CallUiState> get() = _callState
-    private val contactsRepository = ContactsRepository(context)
     private val _callTime: MutableStateFlow<Int> = MutableStateFlow(0)
     val callTime: StateFlow<String>
         get() = _callTime.map {
             secondsToReadableTime(it)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, "")
-    var contactData = contactsRepository.getContactData(phone) ?: ContactData(
+    var contactData = contactsRepository.getContactByPhone(phone) ?: ContactData(
         id = -1,
         name = "Unknown",
         companyName = "",
@@ -137,12 +144,12 @@ class CallViewModel(phone: String, context: Context) : ViewModel() {
 
 }
 
-class CallViewModelFactory(private val phone: String, private val context: Context) :
+class CallViewModelFactory(private val phone: String) :
     ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CallViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return CallViewModel(phone, context) as T
+            return CallViewModel(phone) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

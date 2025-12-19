@@ -3,6 +3,11 @@ package com.talsk.amadz.ui
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -11,11 +16,12 @@ import com.talsk.amadz.data.CallLogData
 import com.talsk.amadz.data.ContactData
 import com.talsk.amadz.ui.home.DialPadScreen
 import com.talsk.amadz.ui.home.HomeScreen
+import com.talsk.amadz.ui.home.MainViewModel
 import kotlinx.serialization.Serializable
 
 
 @Serializable
-data object DialPadKey : NavKey
+data class DialPadKey(val phoneNumber: String? = null) : NavKey
 
 @Serializable
 data object HomeKey : NavKey
@@ -26,38 +32,34 @@ data object HomeKey : NavKey
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainNavGraph(
-    contacts: List<ContactData>,
-    callLogs: List<CallLogData>,
-    onFavouriteToggle: (ContactData) -> Unit,
-    phoneNumber: String? = null,
-    loadNextPage: () -> Unit,
+    vm: MainViewModel
 ) {
-
+    val contacts by vm.contacts.collectAsStateWithLifecycle()
+    val callLogs by vm.callLogs.collectAsStateWithLifecycle()
+    val dialedNumber by vm.dialedNumber.collectAsStateWithLifecycle()
     val backStack = rememberNavBackStack(HomeKey)
-    LaunchedEffect(phoneNumber) {
-        if (phoneNumber != null) {
-            backStack.add(DialPadKey)
+    LaunchedEffect(dialedNumber) {
+        if (dialedNumber != null) {
+            backStack.add(DialPadKey(dialedNumber))
         }
     }
 
     NavDisplay(
-        backStack = backStack,
-        entryProvider = entryProvider {
+        backStack = backStack, entryProvider = entryProvider {
             entry<HomeKey> {
                 HomeScreen(
                     contacts = contacts,
                     callLogs = callLogs,
-                    onFavouriteToggle = onFavouriteToggle,
+                    onFavouriteToggle = vm::toggleFavourite,
                     dailButtonClicked = {
-                        backStack.add(DialPadKey)
+                        backStack.add(DialPadKey())
                     },
-                    loadNextPage = loadNextPage,
+                    loadNextPage = vm::loadNextPage,
                 )
             }
             entry<DialPadKey> {
-                DialPadScreen(contacts, phoneNumber)
+                DialPadScreen(contacts, it.phoneNumber, vm::consumeDialedNumber)
             }
-        }
-    )
+        })
 
 }

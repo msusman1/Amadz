@@ -4,11 +4,12 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.provider.ContactsContract
+import com.talsk.amadz.domain.repos.ContactRepository
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/22/2023.
  */
-class FavouriteRepository(private val context: Context) {
+class FavouriteRepositoryImpl(private val context: Context): ContactRepository {
 
     private val contentResolver = context.contentResolver
 

@@ -7,27 +7,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.talsk.amadz.ui.MainNavGraph
 import com.talsk.amadz.ui.home.MainViewModel
 import com.talsk.amadz.ui.onboarding.OnboardingActivity
 import com.talsk.amadz.ui.theme.AmadzTheme
 import com.talsk.amadz.util.PermissionChecker
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private val vm by viewModels<MainViewModel>()
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions(), {})
-
-    private var phoneNumberState = mutableStateOf<String?>(null)
+    private val vm: MainViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -35,23 +29,9 @@ class MainActivity : ComponentActivity() {
         checkPermission()
         setContent {
             AmadzTheme {
-                val contacts by vm.contacts.collectAsState()
-                val callLogs by vm.callLogs.collectAsState()
-                val phoneNumber = phoneNumberState.value
-                Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
-                ) {
-                    MainNavGraph(
-                        contacts = contacts,
-                        callLogs = callLogs,
-                        onFavouriteToggle = vm::toggleFavourite,
-                        phoneNumber = phoneNumber,
-                        loadNextPage = vm::loadNextPage
-                    )
-                }
+                MainNavGraph(vm = vm)
             }
         }
-
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -64,18 +44,13 @@ class MainActivity : ComponentActivity() {
             val data: Uri? = intent.data
             val phoneNumber = data?.schemeSpecificPart
             if (!phoneNumber.isNullOrBlank()) {
-                phoneNumberState.value = phoneNumber
+                vm.onDialIntent(phoneNumber)
             }
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        vm.reloadData()
-    }
 
     private fun checkPermission() {
-
         val defaultPhoneApp = PermissionChecker.isDefaultPhoneApp(this)
         if (defaultPhoneApp.not()) {
             startActivity(Intent(this, OnboardingActivity::class.java)).also { finish() }

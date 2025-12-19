@@ -70,7 +70,6 @@ fun OnboardingScreen(onRequestDialerPermission: () -> Unit) {
                 Text(text = "Set as Default")
             }
         }
-
     }
 
 }

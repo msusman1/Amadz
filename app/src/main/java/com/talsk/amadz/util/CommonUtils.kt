@@ -4,6 +4,7 @@ import android.media.ToneGenerator
 import androidx.compose.ui.graphics.Color
 import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 import kotlin.random.Random
 
 /**
@@ -14,7 +15,7 @@ import kotlin.random.Random
 fun secondsToReadableTime(seconds: Int): String {
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
-    return String.format("%02d:%02d", minutes, remainingSeconds)
+    return String.format(Locale.getDefault(), "%02d:%02d", minutes, remainingSeconds)
 }
 
 fun getRandomColor(): Color {
@@ -37,7 +38,6 @@ fun getStartOfDay(): Date {
 
     return calendar.time
 }
-
 
 
 fun Char.toTone(): Int {

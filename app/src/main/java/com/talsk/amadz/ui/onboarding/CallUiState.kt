@@ -1,7 +1,6 @@
 package com.talsk.amadz.ui.onboarding
 
 
-
 sealed class CallUiState {
 
     object Initial : CallUiState()
@@ -10,10 +9,6 @@ sealed class CallUiState {
     object OnHold : CallUiState()
     object CallDisconnected : CallUiState()
     object InCall : CallUiState()
-
-
-
-
 
 
     fun toStatus(): String {

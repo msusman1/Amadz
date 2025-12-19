@@ -2,25 +2,36 @@ package com.talsk.amadz.data
 
 import android.content.ContentResolver
 import android.content.Context
-import android.content.Intent
 import android.database.Cursor
-import android.net.Uri
 import android.provider.ContactsContract
 import android.telephony.TelephonyManager
 import android.util.Log
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.database.getStringOrNull
 import androidx.core.net.toUri
 import com.google.i18n.phonenumbers.NumberParseException
 import com.google.i18n.phonenumbers.PhoneNumberUtil
-import com.talsk.amadz.App
+import com.talsk.amadz.di.IODispatcher
+import com.talsk.amadz.domain.repos.ContactRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
+import javax.inject.Inject
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/21/2023.
  */
-class ContactsRepository(val context: Context) {
-    val TAG = "ContactsRepository"
 
+const val TAG = "ContactsRepository"
+
+class ContactsRepositoryImpl @Inject constructor(
+    @ApplicationContext context: Context,
+    @IODispatcher private val ioDispatcher: CoroutineDispatcher
+) : ContactRepository {
+    val contentResolver: ContentResolver = context.contentResolver
+    val telephonyManager = getSystemService(context, TelephonyManager::class.java)
     private val projection = arrayOf(
         ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
         ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
@@ -30,34 +41,52 @@ class ContactsRepository(val context: Context) {
         ContactsContract.Contacts.STARRED
     )
 
-    fun getAllContacts(): List<ContactData> {
-        Log.d(TAG, "getAllContacts() called")
-        val contactsList = mutableListOf<ContactData>()
 
-        val contentResolver: ContentResolver = context.contentResolver
-
-        val cursor: Cursor? = contentResolver.query(
+    override suspend fun getAllContacts(): List<ContactData> = withContext(ioDispatcher) {
+        val contacts = mutableMapOf<Long, ContactData>()
+        contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             projection,
             null,
             null,
-            null
-        )
-
-        if (cursor != null) {
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+        )?.use { cursor ->
             while (cursor.moveToNext()) {
-                contactsList.add(cursor.toContactData())
+                val contact = cursor.toContactData()
+                contacts.putIfAbsent(contact.id, contact)
             }
-            cursor.close()
         }
-
-        return contactsList.distinctBy { it.id }
-            .sortedBy { it.name.lowercase() }
-
+        contacts.values.toList()
     }
 
-    private fun getCompanyName(contactId: Long): String? {
-        val contentResolver = context.contentResolver
+
+    override suspend fun getContactByPhone(phoneNumber: String): ContactData? =
+        withContext(ioDispatcher) {
+            val normalizedPhone = normalizePhoneNumber(phoneNumber) ?: return@withContext null
+
+            val selection = """
+                REPLACE(REPLACE(REPLACE(${ContactsContract.CommonDataKinds.Phone.NUMBER},
+                ' ', ''), '-', ''), '(', '') LIKE ?
+            """.trimIndent()
+            val selectionArgs = arrayOf("%$normalizedPhone%")
+
+            contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                null
+            )?.use {
+                if (it.moveToFirst()) {
+                    val oldContactData = it.toContactData()
+                    oldContactData.copy(companyName = getCompanyName(oldContactData.id) ?: "")
+                } else {
+                    null
+                }
+            }
+        }
+
+    private suspend fun getCompanyName(contactId: Long): String? = withContext(ioDispatcher) {
         val orgWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " +
                 ContactsContract.Data.MIMETYPE + " = ?"
         val orgWhereParams = arrayOf(
@@ -65,59 +94,31 @@ class ContactsRepository(val context: Context) {
             ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE
         )
 
-        val cursor = contentResolver.query(
+        contentResolver.query(
             ContactsContract.Data.CONTENT_URI,
-            null,
+            arrayOf(ContactsContract.CommonDataKinds.Organization.COMPANY),
             orgWhere,
             orgWhereParams,
             null
-        )
-
-        cursor?.use {
+        )?.use {
             if (it.moveToFirst()) {
                 val companyNameColumnIndex =
                     it.getColumnIndex(ContactsContract.CommonDataKinds.Organization.COMPANY)
-                return it.getStringOrNull(companyNameColumnIndex)
+                it.getStringOrNull(companyNameColumnIndex)
+            } else {
+                null
             }
         }
-        return null
-    }
-
-    fun getContactData(phoneNumber: String): ContactData? {
-
-        val contentResolver: ContentResolver = context.contentResolver
-
-        val normalizedPhone = normalizePhoneNumber(context, phoneNumber)
-        val selection =
-            "REPLACE(REPLACE(REPLACE(${ContactsContract.CommonDataKinds.Phone.NUMBER}, ' ', ''), '-', ''), '(', '') LIKE ?"
-        val selectionArgs = arrayOf("%$normalizedPhone%") // Search for similar numbers
-
-        val cursor: Cursor? = contentResolver.query(
-            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-            projection,
-            selection,
-            selectionArgs,
-            null
-        )
-        var contactData: ContactData? = null
-        cursor?.use {
-            if (it.moveToFirst()) {
-                val oldContactData = it.toContactData()
-                contactData = oldContactData.copy(
-                    companyName = getCompanyName(oldContactData.id) ?: ""
-                )
-            }
-        }
-        return contactData
-
     }
 
 
-    fun normalizePhoneNumber(context: Context, phone: String): String? {
+    fun normalizePhoneNumber(phone: String): String? {
         val phoneUtil = PhoneNumberUtil.getInstance()
 
         // Get the user's default country code
-        val defaultRegion = getUserCountryCode(context)
+        val defaultRegion = telephonyManager?.simCountryIso?.uppercase(Locale.getDefault())
+            ?: telephonyManager?.networkCountryIso?.uppercase(Locale.getDefault())
+            ?: "US" // Default to "US" if unknown
 
         return try {
             // Parse the phone number
@@ -130,16 +131,6 @@ class ContactsRepository(val context: Context) {
             null // Return null if the phone number is invalid
         }
     }
-
-
-    private fun getUserCountryCode(context: Context): String {
-        val telephonyManager =
-            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        return telephonyManager.simCountryIso?.uppercase(Locale.getDefault())
-            ?: telephonyManager.networkCountryIso?.uppercase(Locale.getDefault())
-            ?: "US" // Default to "US" if unknown
-    }
-
 }
 
 
