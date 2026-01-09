@@ -34,7 +34,8 @@ import com.talsk.amadz.R
 import com.talsk.amadz.data.CallLogData
 import com.talsk.amadz.data.CallLogType
 import com.talsk.amadz.data.ContactData
-import com.talsk.amadz.data.toReadableFormat
+import com.talsk.amadz.ui.components.ContactAvatar
+import com.talsk.amadz.util.toReadableFormat
 import kotlinx.serialization.Serializable
 
 /**
@@ -82,13 +83,12 @@ data class BottomNavMenu(
 
 
 @Composable
-fun HeaderItem(text: String) {
+fun HeaderItem(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp),
+        modifier = modifier.padding(vertical = 16.dp, horizontal = 16.dp),
         style = MaterialTheme.typography.bodySmall
     )
-
 }
 
 @Composable
@@ -100,7 +100,11 @@ fun EmptyContactItem() {
 
 
 @Composable
-fun FavouriteItemGroup(contacts: List<ContactData>, onCallClick: (ContactData) -> Unit) {
+fun FavouriteItemGroup(
+    contacts: List<ContactData>,
+    onCallClick: (ContactData) -> Unit,
+    onContactDetailClick: (ContactData) -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -110,15 +114,15 @@ fun FavouriteItemGroup(contacts: List<ContactData>, onCallClick: (ContactData) -
         val second = contacts.getOrNull(1)
         val third = contacts.getOrNull(2)
         if (first != null) {
-            FavouriteItem(first, onCallClick)
+            FavouriteItem(first, onCallClick, onContactDetailClick)
         }
         if (second != null) {
-            FavouriteItem(second, onCallClick)
+            FavouriteItem(second, onCallClick, onContactDetailClick)
         } else {
             Spacer(modifier = Modifier.size(96.dp))
         }
         if (third != null) {
-            FavouriteItem(third, onCallClick)
+            FavouriteItem(third, onCallClick, onContactDetailClick)
         } else {
             Spacer(modifier = Modifier.size(96.dp))
         }
@@ -127,24 +131,22 @@ fun FavouriteItemGroup(contacts: List<ContactData>, onCallClick: (ContactData) -
 }
 
 @Composable
-fun FavouriteItem(contact: ContactData, onCallClick: (ContactData) -> Unit) {
+fun FavouriteItem(
+    contact: ContactData,
+    onCallClick: (ContactData) -> Unit,
+    onContactDetailClick: (ContactData) -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .padding(vertical = 16.dp, horizontal = 8.dp)
-            .clickable() { onCallClick(contact) }) {
+            .clickable { onCallClick(contact) }) {
         Spacer(modifier = Modifier.height(12.dp))
-        TextOrBitmapDrawable(modifier = Modifier.size(96.dp), contact = contact) {
-            Icon(
-                painter = painterResource(id = R.drawable.baseline_call_24),
-                contentDescription = "Call",
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(24.dp)
-                    .background(color = Color.White, shape = CircleShape)
-                    .padding(4.dp)
-            )
-        }
+        ContactAvatar(
+            modifier = Modifier.size(96.dp),
+            contact = contact,
+            onClick = { onContactDetailClick(contact) }
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
         Text(
@@ -157,88 +159,12 @@ fun FavouriteItem(contact: ContactData, onCallClick: (ContactData) -> Unit) {
 
 }
 
-@Composable
-fun TextOrBitmapDrawable(
-    modifier: Modifier, contact: ContactData, inner: @Composable BoxScope.() -> Unit = {}
-) {
-    if (contact.image != null) {
-        Box(
-            modifier = modifier,
-            contentAlignment = Alignment.Center,
-
-            ) {
-            AsyncImage(
-                model = contact.image,
-                contentDescription = null,
-                modifier = modifier.clip(CircleShape)
-            )
-            inner(this)
-        }
-    } else if (contact.name.isNullOrEmpty().not()) {
-        Box(
-            modifier = modifier.background(color = contact.bgColor, shape = CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                modifier = Modifier.align(Alignment.Center),
-                text = contact.name.first().toString(),
-                color = Color.White,
-                style = MaterialTheme.typography.headlineLarge,
-            )
-            inner(this)
-        }
-    } else {
-        Box(
-            modifier = modifier.background(color = contact.bgColor, shape = CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(painterResource(id = R.drawable.outline_person_24), contentDescription = null)
-            inner(this)
-        }
-    }
-
-}
-
-@Composable
-fun ContactItem(
-    contact: ContactData,
-    onContactDetailClick: (ContactData) -> Unit,
-    onCallClick: (ContactData) -> Unit,
-    onFavouriteToggle: ((ContactData) -> Unit)? = null
-) {
-    ListItem(
-        modifier = Modifier.clickable { onContactDetailClick(contact) },
-        leadingContent = {
-            TextOrBitmapDrawable(modifier = Modifier.size(56.dp), contact = contact)
-        },
-        headlineContent = { Text(text = contact.name) },
-        supportingContent = { Text(text = contact.phone) },
-        trailingContent = {
-            Row {
-                if (onFavouriteToggle != null) {
-                    IconButton(onClick = { onFavouriteToggle(contact) }) {
-                        Icon(
-                            painter = painterResource(id = if (contact.isFavourite) R.drawable.baseline_star_24 else R.drawable.baseline_star_border_24),
-                            contentDescription = "Call"
-                        )
-                    }
-                }
-                IconButton(onClick = { onCallClick(contact) }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.baseline_call_24),
-                        contentDescription = "Call"
-                    )
-                }
-            }
-
-        })
-}
-
 
 @Composable
 fun CallLogItem(
     logData: CallLogData,
-    onCallClick: (CallLogData) -> Unit
+    onCallClick: (CallLogData) -> Unit,
+    onContactDetailClick: (CallLogData) -> Unit
 ) {
     fun getCallIcon(): Int {
         return when (logData.callLogType) {
@@ -249,10 +175,11 @@ fun CallLogItem(
     }
     ListItem(
         leadingContent = {
-            TextOrBitmapDrawable(
+            ContactAvatar(
                 modifier = Modifier
                     .size(56.dp),
-                contact = logData.toContactData()
+                contact = logData.toContactData(),
+                onClick = { onContactDetailClick(logData) }
             )
         },
         headlineContent = { Text(text = logData.name.takeIf { it.isNotEmpty() } ?: logData.phone) },

@@ -9,7 +9,6 @@ import android.telecom.Call
 import android.telecom.TelecomManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.getSystemService
-import com.talsk.amadz.App
 import java.net.URLDecoder
 
 /**
@@ -29,7 +28,6 @@ fun Call.callPhone(): String {
 }
 
 fun Context.dial(phone: String) {
-    App.needDataReload = true
     val telecomManager = this.getSystemService<TelecomManager>()
     val uri = Uri.fromParts("tel", phone, null)
     val extras = Bundle()

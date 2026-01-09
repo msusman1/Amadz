@@ -2,9 +2,11 @@ package com.talsk.amadz.util
 
 import android.media.ToneGenerator
 import androidx.compose.ui.graphics.Color
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.random.Random
 
 /**
@@ -18,15 +20,27 @@ fun secondsToReadableTime(seconds: Int): String {
     return String.format(Locale.getDefault(), "%02d:%02d", minutes, remainingSeconds)
 }
 
-fun getRandomColor(): Color {
-    // Generate a random color using RGB values
-    val random = Random.Default
-    return Color(
-        red = random.nextFloat(),
-        green = random.nextFloat(),
-        blue = random.nextFloat(),
-        alpha = 1f
+fun getContactColor(phone: String): Color {
+    val AvatarColors = listOf(
+        Color(0xFFEF5350), // Red
+        Color(0xFFEC407A), // Pink
+        Color(0xFFAB47BC), // Purple
+        Color(0xFF7E57C2), // Deep Purple
+        Color(0xFF5C6BC0), // Indigo
+        Color(0xFF42A5F5), // Blue
+        Color(0xFF26A69A), // Teal
+        Color(0xFF66BB6A), // Green
+        Color(0xFFFFA726), // Orange
+        Color(0xFF8D6E63), // Brown
+        Color(0xFF78909C)  // Blue Grey
     )
+    if (phone.isEmpty()) return AvatarColors[0]
+
+    // 2. Use hashCode to get a consistent number for the same string
+    // Math.abs handles negative hashes to keep the index positive
+    val index = abs(phone.hashCode()) % AvatarColors.size
+
+    return AvatarColors[index]
 }
 
 fun getStartOfDay(): Date {
@@ -40,20 +54,25 @@ fun getStartOfDay(): Date {
 }
 
 
-fun Char.toTone(): Int {
-    return when (this) {
-        '0' -> ToneGenerator.TONE_DTMF_0
-        '1' -> ToneGenerator.TONE_DTMF_1
-        '2' -> ToneGenerator.TONE_DTMF_2
-        '3' -> ToneGenerator.TONE_DTMF_3
-        '4' -> ToneGenerator.TONE_DTMF_4
-        '5' -> ToneGenerator.TONE_DTMF_5
-        '6' -> ToneGenerator.TONE_DTMF_6
-        '7' -> ToneGenerator.TONE_DTMF_7
-        '8' -> ToneGenerator.TONE_DTMF_8
-        '9' -> ToneGenerator.TONE_DTMF_9
-        '*' -> ToneGenerator.TONE_DTMF_S
-        '#' -> ToneGenerator.TONE_DTMF_P
-        else -> ToneGenerator.TONE_PROP_BEEP
+fun Date.toReadableFormat(): String {
+    val dateFormat = SimpleDateFormat("dd MMM, hh:mm aaa", Locale.getDefault())
+    return dateFormat.format(this)
+}
+
+fun Date.toDayCategory(): String {
+    val now = Calendar.getInstance()
+    val cal = Calendar.getInstance().apply { time = this@toDayCategory }
+
+    return when {
+        now.get(Calendar.YEAR) == cal.get(Calendar.YEAR) &&
+                now.get(Calendar.DAY_OF_YEAR) == cal.get(Calendar.DAY_OF_YEAR) ->
+            "Today"
+
+        now.get(Calendar.YEAR) == cal.get(Calendar.YEAR) &&
+                now.get(Calendar.DAY_OF_YEAR) - cal.get(Calendar.DAY_OF_YEAR) == 1 ->
+            "Yesterday"
+
+        else ->
+            SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(this)
     }
 }

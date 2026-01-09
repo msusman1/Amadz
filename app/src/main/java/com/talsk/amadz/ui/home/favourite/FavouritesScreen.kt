@@ -12,25 +12,44 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.talsk.amadz.R
-import com.talsk.amadz.core.dial
-import com.talsk.amadz.data.CallLogData
 import com.talsk.amadz.data.ContactData
-import com.talsk.amadz.ui.extensions.openContactDetailScreen
-import com.talsk.amadz.ui.home.ContactItem
+import com.talsk.amadz.ui.components.ContactItem
 import com.talsk.amadz.ui.home.EmptyContactItem
 import com.talsk.amadz.ui.home.FavouriteItemGroup
 import com.talsk.amadz.ui.home.HeaderItem
-import kotlin.collections.chunked
+
 
 @Composable
-fun FavouritesScreen(favourites: List<ContactData>, callLogs: List<CallLogData>) {
-    val context = LocalContext.current
+fun FavouritesScreen(
+    onCallClick: (ContactData) -> Unit,
+    onContactDetailCLick: (ContactData) -> Unit,
+    vm: FavouritesViewModel = hiltViewModel()
+) {
+    val favourites by vm.favourites.collectAsStateWithLifecycle()
+    val frequentCalledContacts by vm.frequentCalledContacts.collectAsStateWithLifecycle()
+    FavouritesScreenInternal(
+        favourites = favourites,
+        frequents = frequentCalledContacts,
+        onCallClick = onCallClick,
+        onContactDetailCLick = onContactDetailCLick
+    )
+}
+
+@Composable
+fun FavouritesScreenInternal(
+    favourites: List<ContactData>,
+    frequents: List<ContactData>,
+    onCallClick: (ContactData) -> Unit,
+    onContactDetailCLick: (ContactData) -> Unit,
+) {
     LazyColumn {
         item {
             HeaderItem(text = "Favourites")
@@ -57,22 +76,21 @@ fun FavouritesScreen(favourites: List<ContactData>, callLogs: List<CallLogData>)
         } else {
             items(favourites.chunked(3)) { contacts ->
                 FavouriteItemGroup(
-                    contacts = contacts, onCallClick = { context.dial(it.phone) })
+                    contacts = contacts,
+                    onCallClick = onCallClick,
+                    onContactDetailClick = onContactDetailCLick
+                )
             }
         }
         item {
             HeaderItem(text = "Frequents")
         }
         items(
-            callLogs.filter { it.name.isNotEmpty() }
-                .groupBy { it.phone }.values.sortedBy { it.size }.take(5)
-                .mapNotNull { it.firstOrNull() }) { callLog ->
+            frequents, key = { it.id }) { contact ->
             ContactItem(
-                contact = callLog.toContactData(),
-                onContactDetailClick = {
-                    context.openContactDetailScreen(it.id)
-                },
-                onCallClick = { contactData -> context.dial(contactData.phone) },
+                contact = contact,
+                onContactDetailClick = onContactDetailCLick,
+                onCallClick = onCallClick,
                 onFavouriteToggle = null
             )
         }

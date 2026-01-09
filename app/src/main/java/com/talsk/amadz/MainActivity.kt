@@ -6,11 +6,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.talsk.amadz.ui.MainNavGraph
-import com.talsk.amadz.ui.home.MainViewModel
 import com.talsk.amadz.ui.onboarding.OnboardingActivity
 import com.talsk.amadz.ui.theme.AmadzTheme
 import com.talsk.amadz.util.PermissionChecker
@@ -21,7 +18,7 @@ class MainActivity : ComponentActivity() {
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions(), {})
-    private val vm: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -29,7 +26,7 @@ class MainActivity : ComponentActivity() {
         checkPermission()
         setContent {
             AmadzTheme {
-                MainNavGraph(vm = vm)
+                MainNavGraph()
             }
         }
     }
@@ -44,7 +41,6 @@ class MainActivity : ComponentActivity() {
             val data: Uri? = intent.data
             val phoneNumber = data?.schemeSpecificPart
             if (!phoneNumber.isNullOrBlank()) {
-                vm.onDialIntent(phoneNumber)
             }
         }
     }

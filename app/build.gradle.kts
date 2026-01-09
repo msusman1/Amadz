@@ -22,7 +22,7 @@ android {
 
     defaultConfig {
         applicationId = "com.talsk.amadz"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 10
         versionName = "1.1.0"
@@ -62,6 +62,11 @@ android {
     }
 
 }
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-Xcontext-parameters")
+    }
+}
 
 dependencies {
 
@@ -87,5 +92,7 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.paging)
+    implementation(libs.androidx.paging.compose)
 
 }

@@ -1,91 +1,89 @@
 package com.talsk.amadz.core
 
 import android.app.KeyguardManager
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.os.Build
 import android.os.PowerManager
 import android.telecom.Call
-import android.telecom.CallAudioState
 import android.telecom.InCallService
 import android.util.Log
-import com.talsk.amadz.App
+import com.talsk.amadz.domain.CallAdapter
+import com.talsk.amadz.domain.CallAudioController
+import com.talsk.amadz.domain.NotificationController
 import com.talsk.amadz.ui.ongoingCall.CallActivity
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/172023.
  */
-const val CALL_ACTION_MUTE = "action_mute"
-const val CALL_ACTION_UN_MUTE = "action_un_mute"
-const val CALL_ACTION_SPEAKER_ON = "action_speaker_on"
-const val CALL_ACTION_SPEAKER_OFF = "action_speaker_off"
 
+const val TAG = "CallService"
+
+@AndroidEntryPoint
 class CallService : InCallService() {
-    val TAG = "CallService"
-    private lateinit var powerManager: PowerManager
-    private lateinit var keyguardManager: KeyguardManager
-    private var lastCallIncomming = false
-    override fun onCreate() {
-        powerManager = getSystemService(PowerManager::class.java)
-        keyguardManager = getSystemService(KeyguardManager::class.java)
-        val intentFilter = IntentFilter()
-        intentFilter.addAction(CALL_ACTION_MUTE)
-        intentFilter.addAction(CALL_ACTION_UN_MUTE)
-        intentFilter.addAction(CALL_ACTION_SPEAKER_ON)
-        intentFilter.addAction(CALL_ACTION_SPEAKER_OFF)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(callActionReceiver, intentFilter, RECEIVER_EXPORTED)
-        } else {
-            @Suppress("UnspecifiedRegisterReceiverFlag")
-            registerReceiver(callActionReceiver, intentFilter)
-        }
-    }
+    @Inject
+    lateinit var callAdapter: CallAdapter
 
-    override fun onDestroy() {
-        super.onDestroy()
-        unregisterReceiver(callActionReceiver)
+    @Inject
+    lateinit var notificationController: NotificationController
+    lateinit var powerManager: PowerManager
+    lateinit var keyguardManager: KeyguardManager
+    val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private lateinit var audioController: CallAudioController
+
+    override fun onCreate() {
+        super.onCreate()
+        powerManager = this.getSystemService(PowerManager::class.java)
+        keyguardManager = this.getSystemService(KeyguardManager::class.java)
+        audioController = TelecomAudioController(this)
+        callAdapter.attachAudioController(audioController)
+
     }
 
     override fun onCallAdded(call: Call) {
         Log.d(TAG, "onCallAdded() called with: call = $call")
         super.onCallAdded(call)
-        CallManager.updateCall(call)
-        lastCallIncomming = call.state == Call.STATE_RINGING
-        if (call.state == Call.STATE_RINGING) {
-            if (powerManager.isInteractive && keyguardManager.isKeyguardLocked.not()) {
-                App.instance.notificationHelper.displayIncomingCallNotification(call.callPhone())
-                App.instance.notificationHelper.playCallRingTone()
 
-            } else {
-                App.instance.notificationHelper.playCallRingTone()
-                CallActivity.start(this, call.callPhone())
+
+        val isRinging = call.state == Call.STATE_RINGING
+        val isOutgoing = call.state == Call.STATE_CONNECTING || call.state == Call.STATE_DIALING
+
+        val shouldShowCallUI = when {
+            isOutgoing -> true
+            isRinging -> {
+                // Only start Activity if screen is off or locked (Heads-up notification would handle the rest)
+                !powerManager.isInteractive || keyguardManager.isKeyguardLocked
             }
-        } else if (call.state == Call.STATE_CONNECTING || call.state == Call.STATE_DIALING) {
+
+            else -> false
+        }
+        if (shouldShowCallUI) {
             CallActivity.start(this, call.callPhone())
         }
+        callAdapter.bindCall(call)
+
+
     }
 
     override fun onCallRemoved(call: Call) {
+        Log.d(TAG, "onCallRemoved: $call")
         super.onCallRemoved(call)
-        if (call.details.connectTimeMillis == 0L && lastCallIncomming) {
-            App.instance.notificationHelper.showMissedCallNotification(call.callPhone())
-        }
-        CallManager.updateCall(null)
-    }
-
-
-    private val callActionReceiver = object : BroadcastReceiver() {
-        override fun onReceive(p0: Context, intent: Intent) {
-            when (intent.action) {
-                CALL_ACTION_MUTE -> setMuted(true)
-                CALL_ACTION_UN_MUTE -> setMuted(false)
-                CALL_ACTION_SPEAKER_ON -> setAudioRoute(CallAudioState.ROUTE_SPEAKER)
-                CALL_ACTION_SPEAKER_OFF -> setAudioRoute(CallAudioState.ROUTE_EARPIECE)
-                else -> {}
+        callAdapter.unBindCall(call)
+        if (call.details.connectTimeMillis == 0L) {
+            scope.launch {
+                notificationController.showMissedCallNotification(call.callPhone())
             }
         }
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        callAdapter.detachAudioController()
+        super.onDestroy()
     }
 }

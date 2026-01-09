@@ -15,13 +15,13 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
@@ -30,10 +30,12 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.talsk.amadz.R
-import com.talsk.amadz.data.CallLogData
-import com.talsk.amadz.data.ContactData
-import com.talsk.amadz.ui.components.HomeSearchBar
+import com.talsk.amadz.core.dial
+import com.talsk.amadz.ui.extensions.openContactDetailScreen
+import com.talsk.amadz.ui.home.contacts.ContactsScreen
 import com.talsk.amadz.ui.home.favourite.FavouritesScreen
+import com.talsk.amadz.ui.home.recent.RecentsScreen
+import com.talsk.amadz.ui.home.searchbar.HomeSearchBar
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/18/2023.
@@ -42,18 +44,11 @@ import com.talsk.amadz.ui.home.favourite.FavouritesScreen
 
 @Composable
 fun HomeScreen(
-    contacts: List<ContactData>,
-    callLogs: List<CallLogData>,
-    onFavouriteToggle: (ContactData) -> Unit,
     dailButtonClicked: () -> Unit,
-    loadNextPage: () -> Unit,
 ) {
-    val favourites by remember {
-        derivedStateOf { contacts.filter { it.isFavourite } }
-    }
     val backStack = rememberNavBackStack(RecentsKey)
     val routes = remember { homeRoutes() }
-
+    val context = LocalContext.current
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     Scaffold(
         floatingActionButton = {
@@ -65,15 +60,21 @@ fun HomeScreen(
                 FloatingActionButton(onClick = dailButtonClicked) {
                     Icon(
                         painter = painterResource(id = R.drawable.baseline_dialpad_24),
-                        contentDescription = "Dialpad"
+                        contentDescription = "DialPad"
                     )
                 }
             }
         },
         topBar = {
-            HomeSearchBar(contacts, onSearchBarActiveChange = { active ->
-                isSearchActive = active
-            })
+            HomeSearchBar(
+                onSearchBarActiveChange = { active -> isSearchActive = active },
+                onContactDetailClick = {
+                    context.openContactDetailScreen(it.id)
+                },
+                onCallClick = {
+                    context.dial(it.phone)
+                }
+            )
         },
         bottomBar = {
             AnimatedVisibility(
@@ -97,8 +98,6 @@ fun HomeScreen(
                 }
             }
         }
-
-
     ) { paddingValues ->
         NavDisplay(
             backStack = backStack,
@@ -109,13 +108,33 @@ fun HomeScreen(
             ),
             entryProvider = entryProvider {
                 entry(FavouritesKey) {
-                    FavouritesScreen(favourites = favourites, callLogs = callLogs)
+                    FavouritesScreen(
+                        onCallClick = {
+                            context.dial(it.phone)
+                        },
+                        onContactDetailCLick = {
+                            context.openContactDetailScreen(it.id)
+                        }
+                    )
                 }
                 entry(RecentsKey) {
-                    RecentsScreen(callLogs = callLogs, loadNextPage = loadNextPage)
+                    RecentsScreen(
+                        onContactDetailClick = {
+                            context.openContactDetailScreen(it.id)
+                        },
+                        onCallClick = {
+                            context.dial(it)
+                        })
                 }
                 entry(ContactsKey) {
-                    ContactsScreen(contacts = contacts, onFavouriteToggle = onFavouriteToggle)
+                    ContactsScreen(
+                        onContactDetailClick = {
+                            context.openContactDetailScreen(it.id)
+                        },
+                        onCallClick = {
+                            context.dial(it.phone)
+                        }
+                    )
                 }
 
             }

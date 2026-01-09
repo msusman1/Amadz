@@ -1,22 +1,28 @@
 package com.talsk.amadz.data
 
 import android.content.ContentResolver
+import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.provider.ContactsContract
 import android.telephony.TelephonyManager
 import android.util.Log
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.database.getStringOrNull
 import androidx.core.net.toUri
+import coil3.decode.DecodeUtils.calculateInSampleSize
 import com.google.i18n.phonenumbers.NumberParseException
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.talsk.amadz.di.IODispatcher
 import com.talsk.amadz.domain.repos.ContactRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.util.Locale
 import javax.inject.Inject
 
@@ -59,6 +65,39 @@ class ContactsRepositoryImpl @Inject constructor(
         contacts.values.toList()
     }
 
+    override suspend fun searchContacts(query: String): List<ContactData> =
+        withContext(ioDispatcher) {
+
+            if (query.isBlank()) return@withContext emptyList()
+
+            val contacts = mutableMapOf<Long, ContactData>()
+
+            val selection = """
+            ${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ?
+            OR ${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ?
+        """.trimIndent()
+
+            val args = arrayOf(
+                "%$query%",
+                "%$query%"
+            )
+
+            contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                projection,
+                selection,
+                args,
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val contact = cursor.toContactData()
+                    contacts.putIfAbsent(contact.id, contact)
+                }
+            }
+
+            contacts.values.toList()
+        }
+
 
     override suspend fun getContactByPhone(phoneNumber: String): ContactData? =
         withContext(ioDispatcher) {
@@ -79,7 +118,9 @@ class ContactsRepositoryImpl @Inject constructor(
             )?.use {
                 if (it.moveToFirst()) {
                     val oldContactData = it.toContactData()
-                    oldContactData.copy(companyName = getCompanyName(oldContactData.id) ?: "")
+                    val photoBitmap = loadContactImage(oldContactData.image)
+                    val companyName = getCompanyName(oldContactData.id) ?: ""
+                    oldContactData.copy(companyName = companyName, imageBitmap = photoBitmap)
                 } else {
                     null
                 }
@@ -131,6 +172,100 @@ class ContactsRepositoryImpl @Inject constructor(
             null // Return null if the phone number is invalid
         }
     }
+
+    override suspend fun loadContactImage(photoUri: Uri?): Bitmap? = withContext(ioDispatcher) {
+        if (photoUri == null) return@withContext null
+        val targetSizePx: Int = 200
+        return@withContext try {
+            // 1. Decode bounds only
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+
+            contentResolver.openInputStream(photoUri)?.use {
+                BitmapFactory.decodeStream(it, null, options)
+            }
+
+            if (options.outWidth <= 0 || options.outHeight <= 0) {
+                return@withContext null
+            }
+
+            // 2. Calculate optimal inSampleSize
+            options.inSampleSize = calculateInSampleSize(
+                options.outWidth,
+                options.outHeight,
+                targetSizePx,
+                targetSizePx,
+                coil3.size.Scale.FILL
+            )
+
+            // 3. Decode scaled bitmap
+            options.inJustDecodeBounds = false
+            options.inPreferredConfig = Bitmap.Config.ARGB_8888
+
+            contentResolver.openInputStream(photoUri)?.use {
+                BitmapFactory.decodeStream(it, null, options)
+            }
+
+        } catch (e: SecurityException) {
+            Log.e("ContactFetcher", "Permission denied while loading contact image", e)
+            null
+        } catch (e: IOException) {
+            Log.e("ContactFetcher", "Error loading contact image", e)
+            null
+        }
+    }
+
+
+    /**
+     * Get all favourite contacts as ContactData list
+     */
+    override suspend fun getAllFavourites(): List<ContactData> {
+        val favourites = mutableListOf<ContactData>()
+
+        val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+            ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ContactsContract.CommonDataKinds.Phone.PHOTO_URI,
+            ContactsContract.Contacts.STARRED
+        )
+
+        val selection = "${ContactsContract.Contacts.STARRED} = 1"
+
+        val cursor = contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            projection,
+            selection,
+            null,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
+        )
+
+        cursor?.use {
+            while (it.moveToNext()) {
+                favourites.add(it.toContactData())
+            }
+        }
+
+        // One contact may have multiple numbers → dedupe
+        return favourites.distinctBy { it.id }
+    }
+
+    /**
+     * Internal helper to update STARRED flag
+     */
+    override suspend fun updateStarred(contactId: Long, starred: Boolean) {
+        val values = ContentValues().apply {
+            put(ContactsContract.Contacts.STARRED, if (starred) 1 else 0)
+        }
+
+        val uri = ContentUris.withAppendedId(
+            ContactsContract.Contacts.CONTENT_URI,
+            contactId
+        )
+
+        contentResolver.update(uri, values, null, null)
+    }
 }
 
 
@@ -153,7 +288,6 @@ fun Cursor.toContactData(): ContactData {
     val contactName = this.getString(nameColumnIndex)
     val contactNumber = this.getString(numberColumnIndex)
     val photoUri = this.getStringOrNull(photoUriColumnIndex)?.toUri()
-//                val contactImage = contactImageRepository.loadContactImage(photoUri)
     val isFavourite = getInt(starredColumnIndex) == 1
     return ContactData(
         id = contactId,
@@ -161,7 +295,10 @@ fun Cursor.toContactData(): ContactData {
         companyName = "",
         phone = contactNumber,
         image = photoUri,
-        isFavourite = isFavourite
+        isFavourite = isFavourite,
+        imageBitmap = null
     )
+
+
 }
 
