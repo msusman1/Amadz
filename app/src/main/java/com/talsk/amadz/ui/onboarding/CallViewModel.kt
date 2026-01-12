@@ -2,10 +2,10 @@ package com.talsk.amadz.ui.onboarding
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.talsk.amadz.data.ContactData
+import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.domain.CallAction
 import com.talsk.amadz.domain.CallAdapter
-import com.talsk.amadz.domain.repos.ContactRepository
+import com.talsk.amadz.domain.repo.ContactRepository
 import com.talsk.amadz.ui.extensions.stateInScoped
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,16 +25,28 @@ class CallViewModel @Inject constructor(
 ) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val contact: StateFlow<ContactData> =
+    val contact: StateFlow<ContactWithCompanyName> =
         savedStateHandle.getStateFlow("phone", "")
             .mapLatest { number ->
-                contactsRepository.getContactByPhone(number)
-                    ?: ContactData.unknown(number)
-            }.stateInScoped(ContactData.unknown(""))
+                val realContact = contactsRepository.getContactByPhone(number)
+                if (realContact != null) {
+                    val companyName = contactsRepository.getCompanyName(realContact.id)
+                    ContactWithCompanyName(realContact, companyName)
+                } else {
+                    ContactWithCompanyName(Contact.unknown(number), "")
+                }
+            }.stateInScoped(ContactWithCompanyName(Contact.unknown(""), ""))
 
     val callState: StateFlow<CallState> = callAdapter.callState
 
     fun onAction(action: CallAction) {
         callAdapter.dispatch(action)
     }
+
+
 }
+
+data class ContactWithCompanyName(
+    val contact: Contact,
+    val companyName: String?
+)

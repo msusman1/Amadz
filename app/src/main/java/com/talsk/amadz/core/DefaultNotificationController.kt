@@ -16,7 +16,8 @@ import androidx.core.app.NotificationManagerCompat
 import com.talsk.amadz.MainActivity
 import com.talsk.amadz.R
 import com.talsk.amadz.domain.NotificationController
-import com.talsk.amadz.domain.repos.ContactRepository
+import com.talsk.amadz.domain.repo.ContactPhotoProvider
+import com.talsk.amadz.domain.repo.ContactRepository
 import com.talsk.amadz.ui.ongoingCall.CallActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -37,7 +38,8 @@ data class ContactUi(
 
 class DefaultNotificationController @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val contactRepository: ContactRepository
+    private val contactRepository: ContactRepository,
+    private val contactPhotoProvider: ContactPhotoProvider
 ) : NotificationController {
 
     private val notificationManager = NotificationManagerCompat.from(context)
@@ -156,16 +158,17 @@ class DefaultNotificationController @Inject constructor(
 
     private suspend fun loadContactUi(phone: String): ContactUi {
         val contact = contactRepository.getContactByPhone(phone)
+        val contactBitmap = contact?.image?.let { contactPhotoProvider.getContactPhotoBitmap(it) }
         return if (contact != null) {
             ContactUi(
                 title = contact.name,
-                subtitle = contact.companyName,
-                avatar = contact.imageBitmap
+                subtitle = contact.phone,
+                avatar = contactBitmap
             )
         } else {
             ContactUi(
-                title = phone,
-                subtitle = null,
+                title = "Unknown",
+                subtitle = phone,
                 avatar = defaultAvatar()
             )
         }

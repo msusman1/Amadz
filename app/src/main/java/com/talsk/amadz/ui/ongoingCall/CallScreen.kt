@@ -34,14 +34,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.talsk.amadz.R
-import com.talsk.amadz.data.ContactData
+import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.domain.CallAction
 import com.talsk.amadz.ui.components.ContactAvatar
 import com.talsk.amadz.ui.components.ToggleFab
 import com.talsk.amadz.ui.home.KeyPad
 import com.talsk.amadz.ui.onboarding.CallDirection
 import com.talsk.amadz.ui.onboarding.CallState
-import com.talsk.amadz.ui.theme.AmadzTheme
+import com.talsk.amadz.ui.onboarding.ContactWithCompanyName
 import com.talsk.amadz.ui.theme.green
 import com.talsk.amadz.ui.theme.red
 import com.talsk.amadz.util.secondsToReadableTime
@@ -54,18 +54,18 @@ import com.talsk.amadz.util.secondsToReadableTime
 @Composable
 private fun CallScreenPrev() {
     CallScreen(
-        contact = ContactData(
-            id = 232L,
-            name = "ALi",
-            companyName = "Urban Soft",
-            phone = "45678o",
-            image = null,
-            isFavourite = false,
-            imageBitmap = null
+        contact = ContactWithCompanyName(
+            contact = Contact(
+                id = 232L,
+                name = "ALi",
+                phone = "45678o",
+                image = null,
 
+                ),
+            companyName = "Visa",
         ),
         uiState = CallState.Active(
-            12,
+            duration = 12,
             isMuted = false,
             isSpeakerOn = false,
             isOnHold = false
@@ -91,7 +91,7 @@ fun Int.toSimStateReadable(): String {
 
 @Composable
 fun CallScreen(
-    contact: ContactData,
+    contact: ContactWithCompanyName,
     uiState: CallState,
     onAction: (CallAction) -> Unit,
 ) {
@@ -126,7 +126,8 @@ fun CallScreen(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 CallHeader(
-                    contact = contact,
+                    contact = contact.contact,
+                    companyName = contact.companyName,
                     uiState = uiState,
                     onContactDetailClick = {}
                 )
@@ -187,9 +188,10 @@ fun CallScreen(
 
 @Composable
 fun CallHeader(
-    contact: ContactData,
+    contact: Contact,
+    companyName: String?,
     uiState: CallState,
-    onContactDetailClick: (ContactData) -> Unit
+    onContactDetailClick: (Contact) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -205,7 +207,7 @@ fun CallHeader(
         Spacer(modifier = Modifier.height(16.dp))
         Text(contact.name, style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
-        Text(contact.companyName, style = MaterialTheme.typography.titleMedium)
+        Text(companyName ?: "", style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(8.dp))
         Text(contact.phone, style = MaterialTheme.typography.bodyLarge)
         Spacer(modifier = Modifier.height(12.dp))

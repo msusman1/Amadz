@@ -3,8 +3,6 @@ package com.talsk.amadz.ui.home.searchbar
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -23,43 +21,41 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.talsk.amadz.data.ContactData
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
+import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactItem
+import com.talsk.amadz.ui.components.LazyPagedColumn
 import com.talsk.amadz.ui.home.HeaderItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeSearchBar(
     onSearchBarActiveChange: (Boolean) -> Unit,
-    onContactDetailClick: (ContactData) -> Unit,
-    onCallClick: (ContactData) -> Unit,
+    onContactDetailClick: (Contact) -> Unit,
+    onCallClick: (Contact) -> Unit,
     vm: SearchViewModel = hiltViewModel()
 ) {
-    val contacts by vm.contacts.collectAsStateWithLifecycle()
-    var searchText by rememberSaveable { mutableStateOf("") }
+    val contacts = vm.contacts.collectAsLazyPagingItems()
+    val query by vm.query.collectAsStateWithLifecycle()
     HomeSearchBarInternal(
         contacts = contacts,
+        query = query,
         onSearchBarActiveChange = onSearchBarActiveChange,
         onContactDetailClick = onContactDetailClick,
         onCallClick = onCallClick,
-        onFavouriteToggle = vm::toggleFavourite,
-        onQueryChanged = { query ->
-            searchText = query
-            vm.onSearchQueryChanged(query)
-        },
-        queryText = searchText
+        onQueryChanged = vm::onSearchQueryChanged,
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeSearchBarInternal(
-    contacts: List<ContactData>,
+    contacts: LazyPagingItems<Contact>,
+    query: String,
     onSearchBarActiveChange: (Boolean) -> Unit,
-    onContactDetailClick: (ContactData) -> Unit,
-    onCallClick: (ContactData) -> Unit,
-    onFavouriteToggle: ((ContactData) -> Unit)? = null,
-    queryText: String,
+    onContactDetailClick: (Contact) -> Unit,
+    onCallClick: (Contact) -> Unit,
     onQueryChanged: (String) -> Unit
 ) {
 
@@ -70,7 +66,7 @@ fun HomeSearchBarInternal(
     }
 
     SearchBar(
-        query = queryText,
+        query = query,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = padding),
@@ -85,7 +81,7 @@ fun HomeSearchBarInternal(
         trailingIcon = {
             if (active) {
                 IconButton(onClick = {
-                    if (queryText.isNotEmpty()) {
+                    if (query.isNotEmpty()) {
                         onQueryChanged("")
                     } else {
                         active = false
@@ -99,33 +95,31 @@ fun HomeSearchBarInternal(
         SearchResults(
             filteredContacts = contacts,
             onContactDetailClick = onContactDetailClick,
-            onCallClick = onCallClick,
-            onFavouriteToggle = onFavouriteToggle
+            onCallClick = onCallClick
         )
     }
-
 }
-
 
 @Composable
 private fun SearchResults(
-    filteredContacts: List<ContactData>,
-    onContactDetailClick: (ContactData) -> Unit,
-    onCallClick: (ContactData) -> Unit,
-    onFavouriteToggle: ((ContactData) -> Unit)? = null,
+    filteredContacts: LazyPagingItems<Contact>,
+    onContactDetailClick: (Contact) -> Unit,
+    onCallClick: (Contact) -> Unit,
 ) {
-
-    if (filteredContacts.isNotEmpty()) {
+    if (filteredContacts.itemCount > 0) {
         HeaderItem(text = "All Contacts")
     }
-    LazyColumn {
-        items(filteredContacts) { contact ->
-            ContactItem(
-                contact = contact,
-                onContactDetailClick = onContactDetailClick,
-                onCallClick = onCallClick,
-                onFavouriteToggle = onFavouriteToggle
-            )
+    LazyPagedColumn(filteredContacts) {
+        items(filteredContacts.itemCount, key = {
+            filteredContacts[it]?.id ?: it
+        }) { index ->
+            filteredContacts[index]?.let {
+                ContactItem(
+                    contact = it,
+                    onContactDetailClick = onContactDetailClick,
+                    onCallClick = onCallClick
+                )
+            }
         }
     }
 }

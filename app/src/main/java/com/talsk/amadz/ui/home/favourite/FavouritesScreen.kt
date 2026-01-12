@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.talsk.amadz.R
-import com.talsk.amadz.data.ContactData
+import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactItem
 import com.talsk.amadz.ui.home.EmptyContactItem
 import com.talsk.amadz.ui.home.FavouriteItemGroup
@@ -29,8 +29,8 @@ import com.talsk.amadz.ui.home.HeaderItem
 
 @Composable
 fun FavouritesScreen(
-    onCallClick: (ContactData) -> Unit,
-    onContactDetailCLick: (ContactData) -> Unit,
+    onCallClick: (Contact) -> Unit,
+    onContactDetailCLick: (Contact) -> Unit,
     vm: FavouritesViewModel = hiltViewModel()
 ) {
     val favourites by vm.favourites.collectAsStateWithLifecycle()
@@ -45,10 +45,10 @@ fun FavouritesScreen(
 
 @Composable
 fun FavouritesScreenInternal(
-    favourites: List<ContactData>,
-    frequents: List<ContactData>,
-    onCallClick: (ContactData) -> Unit,
-    onContactDetailCLick: (ContactData) -> Unit,
+    favourites: List<Contact>,
+    frequents: List<Contact>,
+    onCallClick: (Contact) -> Unit,
+    onContactDetailCLick: (Contact) -> Unit,
 ) {
     LazyColumn {
         item {
@@ -91,7 +91,6 @@ fun FavouritesScreenInternal(
                 contact = contact,
                 onContactDetailClick = onContactDetailCLick,
                 onCallClick = onCallClick,
-                onFavouriteToggle = null
             )
         }
         item { EmptyContactItem() }

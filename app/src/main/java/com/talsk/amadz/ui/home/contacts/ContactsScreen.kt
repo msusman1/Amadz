@@ -1,43 +1,26 @@
 package com.talsk.amadz.ui.home.contacts
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.talsk.amadz.data.ContactData
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
+import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactItem
-import com.talsk.amadz.ui.home.EmptyContactItem
+import com.talsk.amadz.ui.components.LazyPagedColumn
 import com.talsk.amadz.ui.home.HeaderItem
 
 
-@Preview
-@Composable
-private fun ContactsScreenPrev() {
-    ContactsScreenInternal(
-        contacts = listOf(
-            ContactData.unknown("434344"),
-            ContactData.unknown("43434444").copy(id = 3)
-        ),
-        onFavouriteToggle = {},
-        onContactDetailClick = {},
-        onCallClick = {}
-    )
-}
-
 @Composable
 fun ContactsScreen(
-    onContactDetailClick: (ContactData) -> Unit,
-    onCallClick: (ContactData) -> Unit,
+    onContactDetailClick: (Contact) -> Unit,
+    onCallClick: (Contact) -> Unit,
     vm: ContactsViewModel = hiltViewModel()
 ) {
-    val contacts by vm.contacts.collectAsStateWithLifecycle()
+    val contacts = vm.contacts.collectAsLazyPagingItems()
     ContactsScreenInternal(
         contacts = contacts,
-        onFavouriteToggle = vm::toggleFavourite,
         onContactDetailClick = onContactDetailClick,
         onCallClick = onCallClick
     )
@@ -45,23 +28,36 @@ fun ContactsScreen(
 
 @Composable
 fun ContactsScreenInternal(
-    contacts: List<ContactData>,
-    onFavouriteToggle: (ContactData) -> Unit,
-    onContactDetailClick: (ContactData) -> Unit,
-    onCallClick: (ContactData) -> Unit
+    contacts: LazyPagingItems<ContactUiModel>,
+    onContactDetailClick: (Contact) -> Unit,
+    onCallClick: (Contact) -> Unit
 ) {
-    Column {
-        HeaderItem(text = "Contacts")
-        LazyColumn {
-            items(contacts, key = { it.id }) { contact ->
-                ContactItem(
-                    contact = contact,
-                    onContactDetailClick = onContactDetailClick,
-                    onCallClick = onCallClick,
-                    onFavouriteToggle = onFavouriteToggle
-                )
+    LazyPagedColumn(
+        modifier = Modifier.fillMaxSize(),
+        pagingItems = contacts
+    ) {
+        items(contacts.itemCount, key = { index ->
+            when (val item = contacts[index]) {
+                is ContactUiModel.Header -> "header_${item.letter}"
+                is ContactUiModel.Item -> "item_${item.contact.id}"
+                null -> index
             }
-            item { EmptyContactItem() }
+        }) { index ->
+            when (val model = contacts.peek(index)) {
+                is ContactUiModel.Header -> {
+                    HeaderItem(text = model.letter.toString())
+                }
+
+                is ContactUiModel.Item -> {
+                    ContactItem(
+                        contact = model.contact,
+                        onContactDetailClick = onContactDetailClick,
+                        onCallClick = onCallClick
+                    )
+                }
+
+                null -> Unit
+            }
         }
     }
 }

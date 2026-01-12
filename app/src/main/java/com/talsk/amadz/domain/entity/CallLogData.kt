@@ -1,8 +1,9 @@
-package com.talsk.amadz.data
+package com.talsk.amadz.domain.entity
 
 import android.net.Uri
 import android.provider.CallLog
 import java.util.Date
+
 
 data class CallLogData(
     val id: Long,
@@ -14,15 +15,12 @@ data class CallLogData(
     val callDuration: Long,
     val simSlot: Int
 ) {
-    fun toContactData(): ContactData {
-        return ContactData(
+    fun toContactData(): Contact {
+        return Contact(
             id = id,
             name = name,
-            companyName = "",
             phone = phone,
             image = image,
-            isFavourite = false,
-            imageBitmap = null,
         )
     }
 }

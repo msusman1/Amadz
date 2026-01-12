@@ -4,8 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,11 +22,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.PagingData
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.talsk.amadz.R
-import com.talsk.amadz.data.ContactData
+import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactItem
+import com.talsk.amadz.ui.components.LazyPagedColumn
 import com.talsk.amadz.ui.home.HeaderItem
 import com.talsk.amadz.ui.home.KeyPad
+import kotlinx.coroutines.flow.flow
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/29/2023.
@@ -38,14 +41,12 @@ import com.talsk.amadz.ui.home.KeyPad
 @Preview
 @Composable
 private fun DialPadScreenPrev() {
+    val flo = flow<PagingData<Contact>> {
+        emit(PagingData.empty())
+    }
     DialPadScreenInternal(
-        uiState = DialPadUiState(
-            dialedNumber = "123",
-            suggestedContacts = listOf(
-                ContactData.unknown("4343441"),
-                ContactData.unknown("4343445").copy(id = 34),
-            ),
-        ),
+        contacts = flo.collectAsLazyPagingItems(),
+        dialedNumber = "324334",
         onDigitPressed = {},
         onDigitReleased = {},
         onBackspace = {},
@@ -61,19 +62,21 @@ private fun DialPadScreenPrev() {
 @Composable
 fun DialPadScreen(
     onPhoneDialed: (String) -> Unit,
-    onContactDetailClicked: (ContactData) -> Unit,
+    onContactDetailClicked: (Contact) -> Unit,
     onContactAddClicked: (String) -> Unit,
     vm: DialPadViewModel = hiltViewModel()
 ) {
-    val uiState by vm.uiState.collectAsStateWithLifecycle()
+    val contacts = vm.contacts.collectAsLazyPagingItems()
+    val dialedNumber by vm.dialedNumber.collectAsStateWithLifecycle()
 
     DialPadScreenInternal(
-        uiState = uiState,
+        contacts = contacts,
+        dialedNumber = dialedNumber,
         onDigitPressed = vm::onDigitPressed,
         onDigitReleased = vm::onDigitReleased,
         onBackspace = vm::onBackspace,
         onClear = vm::onClear,
-        onCallClicked = { onPhoneDialed(uiState.dialedNumber) },
+        onCallClicked = { onPhoneDialed(dialedNumber) },
         onContactCallClicked = { onPhoneDialed(it.phone) },
         onContactDetailClicked = onContactDetailClicked,
         onContactAddClicked = onContactAddClicked,
@@ -84,14 +87,15 @@ fun DialPadScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DialPadScreenInternal(
-    uiState: DialPadUiState,
+    contacts: LazyPagingItems<Contact>,
+    dialedNumber: String,
     onDigitPressed: (Char) -> Unit,
     onDigitReleased: () -> Unit,
     onBackspace: () -> Unit,
     onClear: () -> Unit,
     onCallClicked: () -> Unit,
-    onContactCallClicked: (ContactData) -> Unit,
-    onContactDetailClicked: (ContactData) -> Unit,
+    onContactCallClicked: (Contact) -> Unit,
+    onContactDetailClicked: (Contact) -> Unit,
     onContactAddClicked: (String) -> Unit,
 ) {
     val bottomSheetScaffoldState =
@@ -107,7 +111,7 @@ fun DialPadScreenInternal(
         modifier = Modifier.statusBarsPadding(),
         sheetContent = {
             KeyPad(
-                phone = uiState.dialedNumber,
+                phone = dialedNumber,
                 onTapDown = onDigitPressed,
                 onTapUp = onDigitReleased,
                 onBackSpaceClicked = onBackspace,
@@ -123,24 +127,24 @@ fun DialPadScreenInternal(
         scaffoldState = bottomSheetScaffoldState,
     ) {
         Column(modifier = Modifier.padding(it)) {
-            if (uiState.suggestedContacts.isNotEmpty()) {
+            if (dialedNumber.isNotEmpty()) {
+                NewContactHeader(onContactAddClicked, dialedNumber)
+            }
+            if (contacts.itemCount > 0) {
                 HeaderItem(text = "Suggested")
             }
-            LazyColumn {
-                items(uiState.suggestedContacts, key = { it.id }) { contact ->
-                    ContactItem(
-                        contact = contact,
-                        onContactDetailClick = onContactDetailClicked,
-                        onCallClick = { onContactCallClicked(it) },
-                    )
-                }
-                if (uiState.dialedNumber.isNotEmpty()) {
-                    item {
-                        NewContactHeader(onContactAddClicked, uiState.dialedNumber)
+
+            LazyPagedColumn(contacts) {
+                items(contacts.itemCount, key = { contacts[it]?.id ?: it }) {
+                    contacts.peek(it)?.let {
+                        ContactItem(
+                            contact = it,
+                            onContactDetailClick = onContactDetailClicked,
+                            onCallClick = { onContactCallClicked(it) },
+                        )
                     }
                 }
             }
-
         }
 
     }

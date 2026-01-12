@@ -1,11 +1,7 @@
 package com.talsk.amadz.ui.home
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -23,17 +17,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
-import coil3.compose.AsyncImage
 import com.talsk.amadz.R
-import com.talsk.amadz.data.CallLogData
-import com.talsk.amadz.data.CallLogType
-import com.talsk.amadz.data.ContactData
+import com.talsk.amadz.domain.entity.CallLogData
+import com.talsk.amadz.domain.entity.CallLogType
+import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactAvatar
 import com.talsk.amadz.util.toReadableFormat
 import kotlinx.serialization.Serializable
@@ -101,9 +92,9 @@ fun EmptyContactItem() {
 
 @Composable
 fun FavouriteItemGroup(
-    contacts: List<ContactData>,
-    onCallClick: (ContactData) -> Unit,
-    onContactDetailClick: (ContactData) -> Unit
+    contacts: List<Contact>,
+    onCallClick: (Contact) -> Unit,
+    onContactDetailClick: (Contact) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -132,9 +123,9 @@ fun FavouriteItemGroup(
 
 @Composable
 fun FavouriteItem(
-    contact: ContactData,
-    onCallClick: (ContactData) -> Unit,
-    onContactDetailClick: (ContactData) -> Unit
+    contact: Contact,
+    onCallClick: (Contact) -> Unit,
+    onContactDetailClick: (Contact) -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,

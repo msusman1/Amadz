@@ -2,14 +2,19 @@ package com.talsk.amadz.ui.home.searchbar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.talsk.amadz.data.ContactData
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import com.talsk.amadz.data.ContactsSearchPagingSource
+import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.di.IODispatcher
-import com.talsk.amadz.domain.repos.CallLogRepository
-import com.talsk.amadz.domain.repos.ContactRepository
+import com.talsk.amadz.domain.repo.ContactRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,45 +28,33 @@ import javax.inject.Inject
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
-    @IODispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
-    private val _contacts = MutableStateFlow<List<ContactData>>(emptyList())
-    val contacts: StateFlow<List<ContactData>> = _contacts.asStateFlow()
+    val query = _query.asStateFlow()
 
-    init {
-        observeQuery()
-    }
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+    val contacts: Flow<PagingData<Contact>> =
+        query
+            .debounce(300) // prevent excessive queries
+            .distinctUntilChanged()
+            .flatMapLatest { q ->
+                Pager(
+                    config = PagingConfig(
+                        pageSize = ContactsSearchPagingSource.PAGE_SIZE,
+                        enablePlaceholders = false
+                    )
+                ) {
+                    ContactsSearchPagingSource(
+                        contactRepository = contactRepository,
+                        query = q
+                    )
+                }.flow
+            }
+            .cachedIn(viewModelScope)
 
-    /** Called from the Composable when the search text changes */
     fun onSearchQueryChanged(query: String) {
         _query.value = query
     }
 
-    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    private fun observeQuery() {
-        viewModelScope.launch(ioDispatcher) {
-            _query
-                .debounce(300) // Wait 300ms to avoid querying on every keystroke
-                .distinctUntilChanged()
-                .flatMapLatest { q ->
-                    flow {
-                        val result = if (q.isBlank()) {
-                            contactRepository.getAllContacts()
-                        } else {
-                            contactRepository.searchContacts(q)
-                        }
-                        emit(result)
-                    }
-                }
-                .collect { result ->
-                    _contacts.value = result
-                }
-        }
-    }
-
-    fun toggleFavourite(contactData: ContactData) = viewModelScope.launch {
-        contactRepository.updateStarred(contactData.id, contactData.isFavourite)
-    }
 }

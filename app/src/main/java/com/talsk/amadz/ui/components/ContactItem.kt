@@ -12,16 +12,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.talsk.amadz.R
-import com.talsk.amadz.data.ContactData
+import com.talsk.amadz.domain.entity.Contact
 
 
 @Composable
 fun ContactItem(
-    contact: ContactData,
-    onContactDetailClick: (ContactData) -> Unit,
-    onCallClick: (ContactData) -> Unit,
-    onFavouriteToggle: ((ContactData) -> Unit)? = null
-) {
+    contact: Contact,
+    onContactDetailClick: (Contact) -> Unit,
+    onCallClick: (Contact) -> Unit, ) {
     ListItem(
         modifier = Modifier.clickable { onContactDetailClick(contact) },
         leadingContent = {
@@ -34,14 +32,6 @@ fun ContactItem(
         supportingContent = { Text(text = contact.phone) },
         trailingContent = {
             Row {
-                if (onFavouriteToggle != null) {
-                    IconButton(onClick = { onFavouriteToggle(contact) }) {
-                        Icon(
-                            painter = painterResource(id = if (contact.isFavourite) R.drawable.baseline_star_24 else R.drawable.baseline_star_border_24),
-                            contentDescription = "Call"
-                        )
-                    }
-                }
                 IconButton(onClick = { onCallClick(contact) }) {
                     Icon(
                         painter = painterResource(id = R.drawable.baseline_call_24),

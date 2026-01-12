@@ -2,9 +2,10 @@ package com.talsk.amadz.ui.home.favourite
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.talsk.amadz.data.ContactData
-import com.talsk.amadz.domain.repos.CallLogRepository
-import com.talsk.amadz.domain.repos.ContactRepository
+import com.talsk.amadz.domain.entity.Contact
+import com.talsk.amadz.domain.repo.CallLogRepository
+import com.talsk.amadz.domain.repo.ContactRepository
+import com.talsk.amadz.ui.extensions.stateInScoped
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,33 +19,26 @@ class FavouritesViewModel @Inject constructor(
     private val callLogRepository: CallLogRepository
 ) : ViewModel() {
 
-    private val _favourites =
-        MutableStateFlow<List<ContactData>>(emptyList())
-
-    val favourites: StateFlow<List<ContactData>> =
-        _favourites.asStateFlow()
+    val favourites = contactRepository.observeFavourites()
+        .stateInScoped(emptyList())
 
     private val _frequentCalledContacts =
-        MutableStateFlow<List<ContactData>>(emptyList())
+        MutableStateFlow<List<Contact>>(emptyList())
 
-    val frequentCalledContacts: StateFlow<List<ContactData>> =
+    val frequentCalledContacts: StateFlow<List<Contact>> =
         _frequentCalledContacts.asStateFlow()
 
     init {
-        loadFavourites()
         loadFrequent()
     }
 
-    private fun loadFavourites() {
-        viewModelScope.launch {
-            _favourites.value = contactRepository.getAllFavourites()
-        }
-    }
 
-    private fun loadFrequent() {
-        viewModelScope.launch {
-            _frequentCalledContacts.value = callLogRepository.getFrequentCalledContacts()
-        }
+    private fun loadFrequent() = viewModelScope.launch {
+        runCatching { callLogRepository.getFrequentCalledContacts() }
+            .onSuccess {
+                _frequentCalledContacts.value = it
+            }
+
     }
 
 }

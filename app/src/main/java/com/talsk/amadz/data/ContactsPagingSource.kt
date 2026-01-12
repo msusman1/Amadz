@@ -2,25 +2,25 @@ package com.talsk.amadz.data
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import com.talsk.amadz.domain.entity.CallLogData
-import com.talsk.amadz.domain.repo.CallLogRepository
+import com.talsk.amadz.domain.entity.Contact
+import com.talsk.amadz.domain.repo.ContactRepository
 import javax.inject.Inject
 
-class CallLogsPagingSource @Inject constructor(
-    private val callLogRepository: CallLogRepository
-) : PagingSource<Int, CallLogData>() {
+class ContactsPagingSource @Inject constructor(
+    private val contactRepository: ContactRepository
+) : PagingSource<Int, Contact>() {
 
     companion object {
         const val PAGE_SIZE = 50
         const val FIRST_PAGE = 0
     }
 
-    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, CallLogData> {
+    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Contact> {
         return try {
             val pageIndex = params.key ?: FIRST_PAGE
             val offset = pageIndex * PAGE_SIZE
 
-            val data = callLogRepository.getCallLogsPaged(
+            val data = contactRepository.getContactsPaged(
                 limit = PAGE_SIZE,
                 offset = offset
             )
@@ -35,7 +35,7 @@ class CallLogsPagingSource @Inject constructor(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, CallLogData>): Int? {
+    override fun getRefreshKey(state: PagingState<Int, Contact>): Int? {
         // Anchor position = most recently accessed index
         val anchorPosition = state.anchorPosition ?: return null
 
