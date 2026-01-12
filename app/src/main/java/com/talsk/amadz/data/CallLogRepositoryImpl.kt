@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.content.Context
 import android.provider.CallLog
+import android.util.Log
 import androidx.core.database.getStringOrNull
 import androidx.core.net.toUri
 import com.talsk.amadz.di.IODispatcher
@@ -12,11 +13,16 @@ import com.talsk.amadz.domain.entity.CallLogData
 import com.talsk.amadz.domain.entity.CallLogType
 import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.domain.repo.CallLogRepository
+import com.talsk.amadz.domain.repo.ContactDetailProvider
 import com.talsk.amadz.domain.repo.ContactPhotoProvider
+import com.talsk.amadz.domain.repo.ContactRepository
 import com.talsk.amadz.ui.extensions.getStringOrEmpty
 import com.talsk.amadz.ui.extensions.map
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Date
 import javax.inject.Inject
@@ -30,7 +36,8 @@ class CallLogRepositoryImpl @Inject constructor(
     @ApplicationContext context: Context,
     @IODispatcher private val ioDispatcher: CoroutineDispatcher,
     private val simInfoProvider: SimInfoProvider,
-    private val contactPhotoProvider: ContactPhotoProvider
+    private val contactPhotoProvider: ContactPhotoProvider,
+    private val contactDetailProvider: ContactDetailProvider
 ) : CallLogRepository {
     val contentResolver: ContentResolver = context.contentResolver
 
@@ -78,53 +85,53 @@ class CallLogRepositoryImpl @Inject constructor(
     @SuppressLint("MissingPermission")
     override suspend fun getFrequentCalledContacts(): List<Contact> =
         withContext(ioDispatcher) {
-            val contactCounts = mutableMapOf<String, Pair<String?, Int>>() // phone -> (name, count)
+
+            val callCounts = mutableMapOf<String, Int>() // phone -> count
 
             val projection = arrayOf(
                 CallLog.Calls.NUMBER,
-                CallLog.Calls.CACHED_NAME,
-                CallLog.Calls.TYPE
+                CallLog.Calls.CACHED_NAME
             )
 
-            val selection = "${CallLog.Calls.TYPE} != ${CallLog.Calls.MISSED_TYPE}"
-
-            // Only fetch recent logs to reduce amount of data
             val now = System.currentTimeMillis()
             val oneMonthAgo = now - 30L * 24 * 60 * 60 * 1000 // last 30 days
-            val selectionWithDate = "$selection AND ${CallLog.Calls.DATE} >= $oneMonthAgo"
+
+            val selection = """
+            ${CallLog.Calls.TYPE} != ${CallLog.Calls.MISSED_TYPE}
+            AND ${CallLog.Calls.DATE} >= ?
+            AND ${CallLog.Calls.CACHED_NAME} IS NOT NULL
+        """.trimIndent()
+
+            val selectionArgs = arrayOf(oneMonthAgo.toString())
 
             contentResolver.query(
                 CallLog.Calls.CONTENT_URI,
                 projection,
-                selectionWithDate,
-                null,
-                null // sort order not needed
+                selection,
+                selectionArgs,
+                null
             )?.use { cursor ->
-                val numberIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
-                val nameIndex = cursor.getColumnIndex(CallLog.Calls.CACHED_NAME)
+
+                val numberIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
 
                 while (cursor.moveToNext()) {
-                    val number = cursor.getStringOrNull(numberIndex) ?: continue
-                    val name =
-                        cursor.getStringOrNull(nameIndex)?.takeIf { it.isNotEmpty() } ?: "Unknown"
-                    val count = contactCounts[number]?.second ?: 0
-                    contactCounts[number] = name to (count + 1)
+                    val number = cursor.getString(numberIdx) ?: continue
+                    callCounts[number] = (callCounts[number] ?: 0) + 1
                 }
             }
 
-            // Return top 10
-            contactCounts.entries
-                .sortedByDescending { it.value.second }
+            // Top 10 most frequently called saved numbers
+            val topNumbers = callCounts.entries
+                .sortedByDescending { it.value }
                 .take(10)
-                .map { (phone, pair) ->
-                    Contact(
-                        id = phone.hashCode().toLong(),
-                        name = pair.first ?: phone,
-                        phone = phone,
-                        image = contactPhotoProvider.getContactPhotoUri(phone)
-                    )
-                }
+                .map { it.key }
+
+            // Safe: all numbers are guaranteed to be saved contacts
+            return@withContext topNumbers.mapNotNull {
+                contactDetailProvider.getContactByPhone(it)
+            }
         }
+
 
     companion object {
         private val PROJECTION = arrayOf(

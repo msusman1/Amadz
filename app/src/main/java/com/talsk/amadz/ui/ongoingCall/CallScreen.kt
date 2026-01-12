@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,9 +40,9 @@ import com.talsk.amadz.domain.CallAction
 import com.talsk.amadz.ui.components.ContactAvatar
 import com.talsk.amadz.ui.components.ToggleFab
 import com.talsk.amadz.ui.home.KeyPad
-import com.talsk.amadz.ui.onboarding.CallDirection
-import com.talsk.amadz.ui.onboarding.CallState
-import com.talsk.amadz.ui.onboarding.ContactWithCompanyName
+import com.talsk.amadz.domain.entity.CallDirection
+import com.talsk.amadz.domain.entity.CallState
+import com.talsk.amadz.ui.components.SimErrorDialog
 import com.talsk.amadz.ui.theme.green
 import com.talsk.amadz.ui.theme.red
 import com.talsk.amadz.util.secondsToReadableTime
@@ -64,62 +65,41 @@ private fun CallScreenPrev() {
                 ),
             companyName = "Visa",
         ),
-        uiState = CallState.Active(
-            duration = 12,
-            isMuted = false,
-            isSpeakerOn = false,
-            isOnHold = false
-        ),
-        onAction = {}
+        uiState = CallState.Idle,
+        onAction = {},
+        onFinish = {}
     )
 }
 
-fun Int.toSimStateReadable(): String {
-    return when (this) {
-        TelephonyManager.SIM_STATE_ABSENT -> "No Sim available"
-        TelephonyManager.SIM_STATE_CARD_IO_ERROR -> "Card Io error"
-        TelephonyManager.SIM_STATE_CARD_RESTRICTED -> "Sim card restricted"
-        TelephonyManager.SIM_STATE_NETWORK_LOCKED -> "Network locked"
-        TelephonyManager.SIM_STATE_NOT_READY -> "Sim not ready"
-        TelephonyManager.SIM_STATE_PERM_DISABLED -> "PERM disabled"
-        TelephonyManager.SIM_STATE_PIN_REQUIRED -> "PIN Required"
-        TelephonyManager.SIM_STATE_PUK_REQUIRED -> "PUK Required"
-        TelephonyManager.SIM_STATE_READY -> "Sim is ready"
-        else -> "Unknown"
-    }
-}
 
 @Composable
 fun CallScreen(
     contact: ContactWithCompanyName,
     uiState: CallState,
     onAction: (CallAction) -> Unit,
+    onFinish: () -> Unit,
 ) {
 
     var keyboardOpen by rememberSaveable { mutableStateOf(false) }
-
-    /* val telephonyManager = getSystemService(TelephonyManager::class.java)
-     if (telephonyManager.simState != TelephonyManager.SIM_STATE_READY){
-         if (uiState is CallState.SimError) {
-             SimErrorDialog(
-                 message = uiState.message,
-                 onDismiss = {
-                     if(vm.callState.value is CallState.CallDisconnected){
-                         finishAndRemoveTask()
-                     }
-
-                 }
-             )
-         }
-     }*/
-
-
+    LaunchedEffect(uiState) {
+        if (uiState == CallState.CallDisconnected) {
+            onFinish()
+        }
+    }
+    if (uiState is CallState.SimError) {
+        SimErrorDialog(
+            message = uiState.message,
+            onDismiss = {
+                onFinish()
+            }
+        )
+    }
 
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .weight(0.6f)
+                .weight(0.7f)
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
@@ -141,7 +121,7 @@ fun CallScreen(
         }
         Column(
             modifier = Modifier
-                .weight(0.4f)
+                .weight(0.3f)
                 .background(color = MaterialTheme.colorScheme.surfaceVariant)
                 .padding(horizontal = 32.dp), verticalArrangement = Arrangement.SpaceEvenly
         ) {
@@ -275,11 +255,11 @@ fun CallActionButtons(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (uiState is CallState.Ringing) Arrangement.SpaceBetween else Arrangement.Center,
+        horizontalArrangement = if (uiState.isIncomingCall()) Arrangement.SpaceBetween else Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
 
-        if (uiState is CallState.Ringing) {
+        if (uiState.isIncomingCall()) {
             FloatingActionButton(
                 onClick = onHangup,
                 containerColor = red,
@@ -300,13 +280,11 @@ fun CallActionButtons(
                     contentDescription = "Accept"
                 )
             }
-        }
-        if (uiState is CallState.Active
-            || (uiState is CallState.Ringing && uiState.direction == CallDirection.OUTGOING)
-            || uiState is CallState.OnHold
-        ) {
+        } else {
             FloatingActionButton(
-                onClick = onHangup, containerColor = red, contentColor = Color.White
+                onClick = onHangup,
+                containerColor = red,
+                contentColor = Color.White
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.baseline_call_end_24),

@@ -1,5 +1,6 @@
 package com.talsk.amadz.ui.home.favourite
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.talsk.amadz.domain.entity.Contact
@@ -37,6 +38,8 @@ class FavouritesViewModel @Inject constructor(
         runCatching { callLogRepository.getFrequentCalledContacts() }
             .onSuccess {
                 _frequentCalledContacts.value = it
+            }.onFailure {
+                Log.d("favmeod", "loadFrequent: ${it.message}")
             }
 
     }

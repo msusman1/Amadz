@@ -1,4 +1,4 @@
-package com.talsk.amadz.ui.onboarding
+package com.talsk.amadz.ui.ongoingCall
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -7,6 +7,7 @@ import com.talsk.amadz.domain.CallAction
 import com.talsk.amadz.domain.CallAdapter
 import com.talsk.amadz.domain.repo.ContactRepository
 import com.talsk.amadz.ui.extensions.stateInScoped
+import com.talsk.amadz.domain.entity.CallState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.StateFlow
@@ -42,7 +43,6 @@ class CallViewModel @Inject constructor(
     fun onAction(action: CallAction) {
         callAdapter.dispatch(action)
     }
-
 
 }
 

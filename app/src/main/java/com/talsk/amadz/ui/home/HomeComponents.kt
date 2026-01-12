@@ -18,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
@@ -79,6 +81,16 @@ fun HeaderItem(text: String, modifier: Modifier = Modifier) {
         text = text,
         modifier = modifier.padding(vertical = 16.dp, horizontal = 16.dp),
         style = MaterialTheme.typography.bodySmall
+    )
+}
+
+@Composable
+fun HeaderItemLargeBold(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        modifier = modifier.padding(vertical = 16.dp, horizontal = 16.dp),
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold
     )
 }
 

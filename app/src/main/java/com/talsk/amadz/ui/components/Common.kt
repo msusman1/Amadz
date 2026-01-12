@@ -55,7 +55,7 @@ fun InlineLoader() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(modifier = Modifier.size(24.dp))
@@ -70,7 +70,7 @@ fun InlineError(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(24.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

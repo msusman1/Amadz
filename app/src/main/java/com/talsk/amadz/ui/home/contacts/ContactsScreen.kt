@@ -10,6 +10,7 @@ import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactItem
 import com.talsk.amadz.ui.components.LazyPagedColumn
 import com.talsk.amadz.ui.home.HeaderItem
+import com.talsk.amadz.ui.home.HeaderItemLargeBold
 
 
 @Composable
@@ -45,7 +46,7 @@ fun ContactsScreenInternal(
         }) { index ->
             when (val model = contacts.peek(index)) {
                 is ContactUiModel.Header -> {
-                    HeaderItem(text = model.letter.toString())
+                    HeaderItemLargeBold(text = model.letter.toString())
                 }
 
                 is ContactUiModel.Item -> {

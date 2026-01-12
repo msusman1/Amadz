@@ -10,8 +10,6 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.talsk.amadz.core.LockScreenController
 import com.talsk.amadz.core.ProxyController
-import com.talsk.amadz.domain.CallAdapter
-import com.talsk.amadz.ui.onboarding.CallViewModel
 import com.talsk.amadz.ui.theme.AmadzTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -32,6 +30,7 @@ class CallActivity : ComponentActivity() {
                     contact = contactDetail,
                     uiState = uiState,
                     onAction = { vm.onAction(it) },
+                    onFinish = { finishAndRemoveTask() }
                 )
             }
         }

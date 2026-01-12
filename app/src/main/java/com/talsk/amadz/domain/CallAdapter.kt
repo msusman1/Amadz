@@ -1,7 +1,7 @@
 package com.talsk.amadz.domain
 
 import android.telecom.Call
-import com.talsk.amadz.ui.onboarding.CallState
+import com.talsk.amadz.domain.entity.CallState
 import kotlinx.coroutines.flow.StateFlow
 
 interface CallAdapter {

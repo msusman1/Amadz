@@ -1,4 +1,4 @@
-package com.talsk.amadz.ui.onboarding
+package com.talsk.amadz.domain.entity
 
 sealed class CallState {
 
@@ -21,6 +21,11 @@ sealed class CallState {
 
     object CallDisconnected : CallState()
 
+    data class SimError(
+        val simState: Int,
+        val message: String
+    ) : CallState()
+
     fun toReadableStatus(): String =
         when (this) {
             is Ringing -> when (direction) {
@@ -32,8 +37,17 @@ sealed class CallState {
             is Active -> "In call"
             is OnHold -> "On hold"
             is CallDisconnected -> "Call ended"
+            is SimError -> message
             Idle -> ""
         }
+
+
+    fun isIncomingCall(): Boolean {
+        if (this is Ringing && direction == CallDirection.INCOMING) {
+            return true
+        }
+        return false
+    }
 }
 
 enum class CallDirection {

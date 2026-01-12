@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.database.ContentObserver
 import android.database.Cursor
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract
@@ -40,10 +41,8 @@ class ContactsRepositoryImpl @Inject constructor(
     private val projection = arrayOf(
         ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
         ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-        ContactsContract.CommonDataKinds.Organization.DISPLAY_NAME,
         ContactsContract.CommonDataKinds.Phone.NUMBER,
         ContactsContract.CommonDataKinds.Phone.PHOTO_URI,
-        ContactsContract.Contacts.STARRED
     )
 
     private fun Cursor.toContacts(): List<Contact> {
@@ -85,6 +84,29 @@ class ContactsRepositoryImpl @Inject constructor(
 
     override suspend fun getContactByPhone(phoneNumber: String): Contact? =
         withContext(ioDispatcher) {
+            val uri = Uri.withAppendedPath(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                Uri.encode(phoneNumber)
+            )
+
+            contentResolver.query(
+                uri,
+                arrayOf(
+                    ContactsContract.PhoneLookup._ID,
+                    ContactsContract.PhoneLookup.DISPLAY_NAME,
+                    ContactsContract.PhoneLookup.PHOTO_URI,
+                    ContactsContract.PhoneLookup.NUMBER
+                ),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.toContactDataForPhoneLookup() else null
+            }
+        }
+
+    suspend fun getContactByPhoneOld(phoneNumber: String): Contact? =
+        withContext(ioDispatcher) {
             val normalizedPhone = normalizePhoneNumber(phoneNumber) ?: return@withContext null
 
             val selection = """
@@ -92,7 +114,7 @@ class ContactsRepositoryImpl @Inject constructor(
                 ' ', ''), '-', ''), '(', '') LIKE ?
             """.trimIndent()
             val selectionArgs = arrayOf("%$normalizedPhone%")
-
+            ContactsContract.Contacts.CONTENT_URI
             contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 projection,
@@ -183,25 +205,38 @@ class ContactsRepositoryImpl @Inject constructor(
 
 
     private fun Cursor.toContactData(): Contact {
-        val idColumnIndex =
-            this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+        val idColumnIndex = this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
         val nameColumnIndex =
             this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-
-        val numberColumnIndex =
-            this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+        val numberColumnIndex = this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
         val photoUriColumnIndex =
             this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI)
-
-        val starredColumnIndex =
-            getColumnIndexOrThrow(ContactsContract.Contacts.STARRED) // ✅ NEW
 
         // Retrieve the contact details
         val contactId = this.getLong(idColumnIndex)
         val contactName = this.getString(nameColumnIndex)
         val contactNumber = this.getString(numberColumnIndex)
         val photoUri = this.getStringOrNull(photoUriColumnIndex)?.toUri()
-        val isFavourite = getInt(starredColumnIndex) == 1
+        return Contact(
+            id = contactId,
+            name = contactName,
+            phone = contactNumber,
+            image = photoUri,
+        )
+    }
+
+    private fun Cursor.toContactDataForPhoneLookup(): Contact {
+
+        val idColumnIndex = this.getColumnIndex(ContactsContract.PhoneLookup._ID)
+        val nameColumnIndex = this.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME)
+        val numberColumnIndex = this.getColumnIndex(ContactsContract.PhoneLookup.NUMBER)
+        val photoUriColumnIndex = this.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_URI)
+
+        // Retrieve the contact details
+        val contactId = this.getLong(idColumnIndex)
+        val contactName = this.getString(nameColumnIndex)
+        val contactNumber = this.getString(numberColumnIndex)
+        val photoUri = this.getStringOrNull(photoUriColumnIndex)?.toUri()
         return Contact(
             id = contactId,
             name = contactName,
