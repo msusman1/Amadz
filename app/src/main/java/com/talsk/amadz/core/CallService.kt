@@ -5,9 +5,11 @@ import android.os.PowerManager
 import android.telecom.Call
 import android.telecom.InCallService
 import android.util.Log
+import com.talsk.amadz.domain.CallAction
 import com.talsk.amadz.domain.CallAdapter
 import com.talsk.amadz.domain.CallAudioController
 import com.talsk.amadz.domain.NotificationController
+import com.talsk.amadz.domain.repo.BlockedNumberRepository
 import com.talsk.amadz.ui.ongoingCall.CallActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +35,10 @@ class CallService : InCallService() {
 
     @Inject
     lateinit var notificationController: NotificationController
+
+    @Inject
+    lateinit var blockedNumberRepository: BlockedNumberRepository
+
     lateinit var powerManager: PowerManager
     lateinit var keyguardManager: KeyguardManager
     private val scope = MainScope()
@@ -66,6 +72,11 @@ class CallService : InCallService() {
 
             // Incoming call → show full-screen intent notification
             isIncomingRinging -> {
+                if (blockedNumberRepository.isBlocked(call.callPhone())) {
+                    callStates[call] = Call.STATE_DISCONNECTED
+                    callAdapter.dispatch(CallAction.Hangup)
+                    return
+                }
                 scope.launch {
                     notificationController.playCallRingTone()
                     notificationController.displayIncomingCallNotification(call.callPhone())

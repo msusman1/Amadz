@@ -1,6 +1,7 @@
 package com.talsk.amadz.di
 
 import com.talsk.amadz.data.ContactPhotoProviderImpl
+import com.talsk.amadz.data.BlockedNumberRepositoryImpl
 import com.talsk.amadz.core.DefaultCallAdapter
 import com.talsk.amadz.core.DefaultDtmfToneGenerator
 import com.talsk.amadz.core.DefaultNotificationController
@@ -12,6 +13,7 @@ import com.talsk.amadz.domain.CallAdapter
 import com.talsk.amadz.domain.DtmfToneGenerator
 import com.talsk.amadz.domain.NotificationController
 import com.talsk.amadz.domain.repo.SimInfoProvider
+import com.talsk.amadz.domain.repo.BlockedNumberRepository
 import com.talsk.amadz.domain.repo.CallLogRepository
 import com.talsk.amadz.domain.repo.ContactDetailProvider
 import com.talsk.amadz.domain.repo.ContactPhotoProvider
@@ -71,4 +73,10 @@ abstract class RepoModule {
     abstract fun bindSimInfoProvider(
         impl: SimInfoProviderImpl
     ): SimInfoProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindBlockedNumberRepository(
+        impl: BlockedNumberRepositoryImpl
+    ): BlockedNumberRepository
 }

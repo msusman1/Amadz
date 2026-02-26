@@ -3,6 +3,7 @@ package com.talsk.amadz.ui.callLogHistory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.talsk.amadz.domain.entity.CallLogData
+import com.talsk.amadz.domain.repo.BlockedNumberRepository
 import com.talsk.amadz.domain.repo.CallLogRepository
 import com.talsk.amadz.domain.repo.ContactRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,7 +16,8 @@ import javax.inject.Inject
 @HiltViewModel
 class CallLogHistoryViewModel @Inject constructor(
     private val callLogRepository: CallLogRepository,
-    private val contactRepository: ContactRepository
+    private val contactRepository: ContactRepository,
+    private val blockedNumberRepository: BlockedNumberRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CallLogHistoryUiState())
@@ -36,7 +38,8 @@ class CallLogHistoryViewModel @Inject constructor(
                 isLoading = false,
                 title = contact?.name ?: cachedName.ifBlank { phone },
                 phone = contact?.phone ?: phone,
-                logs = logs
+                logs = logs,
+                isBlocked = blockedNumberRepository.isBlocked(contact?.phone ?: phone)
             )
         }
     }
@@ -49,11 +52,24 @@ class CallLogHistoryViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(logs = emptyList())
         }
     }
+
+    fun toggleBlocked() {
+        val currentPhone = _uiState.value.phone
+        if (currentPhone.isBlank()) return
+        val blocked = blockedNumberRepository.isBlocked(currentPhone)
+        if (blocked) {
+            blockedNumberRepository.unblock(currentPhone)
+        } else {
+            blockedNumberRepository.block(currentPhone)
+        }
+        _uiState.value = _uiState.value.copy(isBlocked = !blocked)
+    }
 }
 
 data class CallLogHistoryUiState(
     val isLoading: Boolean = true,
     val title: String = "",
     val phone: String = "",
-    val logs: List<CallLogData> = emptyList()
+    val logs: List<CallLogData> = emptyList(),
+    val isBlocked: Boolean = false
 )

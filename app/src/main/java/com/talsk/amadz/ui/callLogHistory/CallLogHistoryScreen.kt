@@ -56,7 +56,8 @@ fun CallLogHistoryScreen(
         state = uiState,
         onBackClick = onBackClick,
         onCallClick = onCallClick,
-        onDeleteHistory = vm::deleteHistory
+        onDeleteHistory = vm::deleteHistory,
+        onToggleBlocked = vm::toggleBlocked
     )
 }
 
@@ -66,7 +67,8 @@ private fun CallLogHistoryScreenInternal(
     state: CallLogHistoryUiState,
     onBackClick: () -> Unit,
     onCallClick: (String) -> Unit,
-    onDeleteHistory: () -> Unit
+    onDeleteHistory: () -> Unit,
+    onToggleBlocked: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -97,6 +99,15 @@ private fun CallLogHistoryScreenInternal(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false }
                     ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(if (state.isBlocked) "Unblock number" else "Block number")
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onToggleBlocked()
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text("Delete history") },
                             leadingIcon = {
