@@ -111,7 +111,7 @@ private fun SearchResults(
     }
     LazyPagedColumn(filteredContacts) {
         items(filteredContacts.itemCount, key = {
-            filteredContacts[it]?.id ?: it
+            filteredContacts[it]?.let { contact -> "${contact.id}_${contact.phone}" } ?: it
         }) { index ->
             filteredContacts[index]?.let {
                 ContactItem(

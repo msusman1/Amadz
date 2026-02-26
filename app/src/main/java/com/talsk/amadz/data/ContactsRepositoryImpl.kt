@@ -63,6 +63,16 @@ class ContactsRepositoryImpl @Inject constructor(
         return contacts.values.toList()
     }
 
+    private fun Cursor.toContactRows(): List<Contact> {
+        val contacts = mutableListOf<Contact>()
+        use { cursor ->
+            while (cursor.moveToNext()) {
+                contacts += cursor.toContactData()
+            }
+        }
+        return contacts
+    }
+
     override suspend fun getContactsPaged(limit: Int, offset: Int): List<Contact> =
         withContext(ioDispatcher) {
             Log.d(TAG, "getContactsPaged: $limit, $offset")
@@ -108,7 +118,7 @@ class ContactsRepositoryImpl @Inject constructor(
                 selection,
                 args,
                 "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC LIMIT $limit OFFSET $offset"
-            )?.toContacts() ?: emptyList()
+            )?.toContactRows() ?: emptyList()
         }
 
     override suspend fun getContactByPhone(phoneNumber: String): Contact? =
@@ -295,4 +305,3 @@ class ContactsRepositoryImpl @Inject constructor(
         return numbers
     }
 }
-

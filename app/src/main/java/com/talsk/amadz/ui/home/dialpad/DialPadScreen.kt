@@ -135,7 +135,9 @@ fun DialPadScreenInternal(
             }
 
             LazyPagedColumn(contacts) {
-                items(contacts.itemCount, key = { contacts[it]?.id ?: it }) {
+                items(contacts.itemCount, key = {
+                    contacts[it]?.let { contact -> "${contact.id}_${contact.phone}" } ?: it
+                }) {
                     contacts.peek(it)?.let {
                         ContactItem(
                             contact = it,
