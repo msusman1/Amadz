@@ -9,6 +9,7 @@ import androidx.paging.cachedIn
 import com.talsk.amadz.data.ContactsSearchPagingSource
 import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.di.IODispatcher
+import com.talsk.amadz.domain.repo.CallLogRepository
 import com.talsk.amadz.domain.repo.ContactRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -28,6 +29,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
+    private val callLogRepository: CallLogRepository,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -47,6 +49,7 @@ class SearchViewModel @Inject constructor(
                 ) {
                     ContactsSearchPagingSource(
                         contactRepository = contactRepository,
+                        callLogRepository=callLogRepository,
                         query = q
                     )
                 }.flow

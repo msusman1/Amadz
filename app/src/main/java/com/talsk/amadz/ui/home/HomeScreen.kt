@@ -1,170 +1,195 @@
 package com.talsk.amadz.ui.home
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import android.util.Log
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import com.talsk.amadz.R
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.talsk.amadz.core.dial
 import com.talsk.amadz.ui.callLogHistory.CallLogHistoryScreen
+import com.talsk.amadz.ui.components.AnimatedBottomBar
+import com.talsk.amadz.ui.components.DialFab
 import com.talsk.amadz.ui.extensions.openContactDetailScreen
+import com.talsk.amadz.ui.home.calllogs.CallLogsScreen
 import com.talsk.amadz.ui.home.contacts.ContactsScreen
 import com.talsk.amadz.ui.home.favourite.FavouritesScreen
-import com.talsk.amadz.ui.home.calllogs.CallLogsScreen
 import com.talsk.amadz.ui.home.searchbar.HomeSearchBar
+import com.talsk.amadz.ui.home.searchbar.SearchViewModel
+import kotlinx.coroutines.launch
 
-/**
- * Created by Muhammad Usman : msusman97@gmail.com on 11/18/2023.
- */
-
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    dailButtonClicked: () -> Unit,
+    vm: SearchViewModel = hiltViewModel()
 ) {
     val backStack = rememberNavBackStack(RecentsKey)
-    val routes = remember { homeRoutes() }
+    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    val contacts = vm.contacts.collectAsLazyPagingItems()
+    val query by vm.query.collectAsStateWithLifecycle()
+
+    val bottomSheetState = rememberStandardBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        skipHiddenState = false
+    )
+    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState)
+
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
+    var isSearchFieldActive by rememberSaveable { mutableStateOf(false) }
+    var dialPadPhone by rememberSaveable { mutableStateOf("") }
+
     val currentDestination: NavKey? = backStack.lastOrNull()
     val isHomeTab =
         currentDestination == FavouritesKey ||
-            currentDestination == RecentsKey ||
-            currentDestination == ContactsKey
+                currentDestination == RecentsKey ||
+                currentDestination == ContactsKey
 
-    Scaffold(floatingActionButton = {
-        if (isHomeTab) {
-            AnimatedVisibility(
-                visible = !isSearchActive,
-                enter = scaleIn() + fadeIn(),
-                exit = scaleOut() + fadeOut()
-            ) {
-                FloatingActionButton(onClick = dailButtonClicked) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.baseline_dialpad_24),
-                        contentDescription = "DialPad"
-                    )
+
+    Scaffold(
+        floatingActionButton = {
+            DialFab(
+                visible = !(isSearchActive || bottomSheetState.isVisible),
+                onClick = {
+                    isSearchFieldActive = true
+                    coroutineScope.launch { bottomSheetState.expand() }
                 }
+            )
+        },
+        topBar = {
+            if (isHomeTab) {
+                HomeSearchBar(
+                    contacts = contacts,
+                    query = query,
+                    searchActive = isSearchActive,
+                    isSearchFieldActive = isSearchFieldActive,
+                    onSearchBarActiveChange = {
+                        isSearchActive = it
+                        coroutineScope.launch { bottomSheetState.hide() }
+                    },
+                    onContactDetailClick = { context.openContactDetailScreen(it.id) },
+                    onCallClick = { context.dial(it.phone) },
+                    onQueryChanged = vm::onSearchQueryChanged
+
+                )
+            }
+        },
+        bottomBar = {
+            if (isHomeTab) {
+                AnimatedBottomBar(
+                    visible = !(isSearchActive || bottomSheetState.isVisible),
+                    backStack = backStack
+                )
             }
         }
-    }, topBar = {
-        if (isHomeTab) {
-            HomeSearchBar(
-                onSearchBarActiveChange = { active -> isSearchActive = active },
-                onContactDetailClick = {
-                    context.openContactDetailScreen(it.id)
-                },
-                onCallClick = {
-                    context.dial(it.phone)
-                })
-        }
-    }, bottomBar = {
-        if (isHomeTab) {
-            AnimatedVisibility(
-                visible = !isSearchActive,
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut()) {
-                NavigationBar {
-                    routes.forEach { menu ->
-                        val selected = currentDestination == menu.navKey
-                        NavigationBarItem(label = { Text(menu.label) }, icon = {
-                            Icon(
-                                painter = painterResource(id = if (selected) menu.iconSelected else menu.icon),
-                                contentDescription = menu.label
-                            )
-                        }, selected = selected, onClick = {
-                            val current = backStack.lastOrNull()
-                            if (current != menu.navKey) {
-                                backStack.clear()
-                                backStack.add(menu.navKey)
+    ) { paddingValues ->
+        BottomSheetScaffold(
+            modifier = Modifier.padding(paddingValues),
+            scaffoldState = scaffoldState,
+            sheetContent = {
+                KeyPad(
+                    phone = dialPadPhone,
+                    onTapDown = { char ->
+                        dialPadPhone += char
+                        vm.onSearchQueryChanged(dialPadPhone)
+                    },
+                    onTapUp = {},
+                    onBackSpaceClicked = {
+                        dialPadPhone = dialPadPhone.dropLast(1)
+                        vm.onSearchQueryChanged(dialPadPhone)
+                    },
+                    onClearClicked = {
+                        dialPadPhone = ""
+                        vm.onSearchQueryChanged("")
+                    },
+                    onCallClicked = {
+                        if (dialPadPhone.isNotBlank()) {
+                            context.dial(dialPadPhone)
+                        }
+                    },
+                    showCallButton = true,
+                    showClearButton = true
+                )
+            },
+            sheetPeekHeight = 0.dp,
+            sheetDragHandle = null,
+        ) { innerPadding ->
+            NavDisplay(
+                backStack = backStack,
+                modifier = Modifier.padding(innerPadding),
+                entryDecorators = listOf(
+                    rememberSaveableStateHolderNavEntryDecorator(),
+                    rememberViewModelStoreNavEntryDecorator()
+                ),
+                entryProvider = entryProvider {
+                    entry(FavouritesKey) {
+                        FavouritesScreen(
+                            onCallClick = { context.dial(it.phone) },
+                            onContactDetailCLick = { context.openContactDetailScreen(it.id) }
+                        )
+                    }
+                    entry(RecentsKey) {
+                        CallLogsScreen(
+                            onContactDetailClick = {
+                                it.contactId?.let(context::openContactDetailScreen)
+                            },
+                            onCallClick = {
+                                context.dial(it)
+                            },
+                            onCallLogClick = {
+                                backStack.add(
+                                    CallLogHistoryKey(
+                                        phone = it.phone,
+                                        contactName = it.name,
+                                        contactId = it.contactId
+                                    )
+                                )
                             }
-                        })
+                        )
+                    }
+                    entry(ContactsKey) {
+                        ContactsScreen(
+                            onContactDetailClick = { context.openContactDetailScreen(it.id) },
+                            onCallClick = { context.dial(it.phone) }
+                        )
+                    }
+                    entry<CallLogHistoryKey> {
+                        CallLogHistoryScreen(
+                            phone = it.phone,
+                            contactName = it.contactName,
+                            onBackClick = {
+                                if (backStack.size > 1) {
+                                    backStack.removeAt(backStack.lastIndex)
+                                }
+                            },
+                            onCallClick = { phone ->
+                                context.dial(phone)
+                            }
+                        )
                     }
                 }
-            }
+            )
         }
-    }) { paddingValues ->
-        NavDisplay(
-            backStack = backStack,
-            modifier = Modifier.padding(paddingValues),
-            entryDecorators = listOf(
-                rememberSaveableStateHolderNavEntryDecorator(),
-                rememberViewModelStoreNavEntryDecorator()
-            ),
-            entryProvider = entryProvider {
-                entry(FavouritesKey) {
-                    FavouritesScreen(onCallClick = {
-                        context.dial(it.phone)
-                    }, onContactDetailCLick = {
-                        context.openContactDetailScreen(it.id)
-                    })
-                }
-                entry(RecentsKey) {
-                    CallLogsScreen(
-                        onContactDetailClick = {
-                            it.contactId?.let(context::openContactDetailScreen)
-                        },
-                        onCallClick = {
-                            context.dial(it)
-                        },
-                        onCallLogClick = {
-                            backStack.add(
-                                CallLogHistoryKey(
-                                    phone = it.phone,
-                                    contactName = it.name,
-                                    contactId = it.contactId
-                                )
-                            )
-                        }
-                    )
-                }
-                entry(ContactsKey) {
-                    ContactsScreen(onContactDetailClick = {
-                        context.openContactDetailScreen(it.id)
-                    }, onCallClick = {
-                        context.dial(it.phone)
-                    })
-                }
-                entry<CallLogHistoryKey> {
-                    CallLogHistoryScreen(
-                        phone = it.phone,
-                        contactName = it.contactName,
-                        onBackClick = {
-                            if (backStack.size > 1) {
-                                backStack.removeAt(backStack.lastIndex)
-                            }
-                        },
-                        onCallClick = { phone ->
-                            context.dial(phone)
-                        }
-                    )
-                }
-
-            })
     }
 }

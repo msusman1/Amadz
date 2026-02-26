@@ -3,11 +3,13 @@ package com.talsk.amadz.data
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.talsk.amadz.domain.entity.Contact
+import com.talsk.amadz.domain.repo.CallLogRepository
 import com.talsk.amadz.domain.repo.ContactRepository
 import javax.inject.Inject
 
 class ContactsSearchPagingSource @Inject constructor(
     private val contactRepository: ContactRepository,
+    private val callLogRepository: CallLogRepository,
     private val query: String,
 ) : PagingSource<Int, Contact>() {
 
@@ -20,12 +22,15 @@ class ContactsSearchPagingSource @Inject constructor(
         return try {
             val pageIndex = params.key ?: FIRST_PAGE
             val offset = pageIndex * PAGE_SIZE
-
-            val data = contactRepository.searchContacts(
-                query = query,
-                limit = PAGE_SIZE,
-                offset = offset
-            )
+            val data = if (query.isEmpty()) {
+                callLogRepository.getFrequentCalledContacts()
+            } else {
+                contactRepository.searchContacts(
+                    query = query,
+                    limit = PAGE_SIZE,
+                    offset = offset
+                )
+            }
 
             LoadResult.Page(
                 data = data,
