@@ -40,11 +40,16 @@ class ContactsRepositoryImpl @Inject constructor(
     val TAG = "ContactsRepositoryImpl"
     val contentResolver: ContentResolver = context.contentResolver
     val telephonyManager = getSystemService(context, TelephonyManager::class.java)
-    private val projection = arrayOf(
+    private val phoneProjection = arrayOf(
         ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
         ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
         ContactsContract.CommonDataKinds.Phone.NUMBER,
         ContactsContract.CommonDataKinds.Phone.PHOTO_URI,
+    )
+    private val contactProjection = arrayOf(
+        ContactsContract.Contacts._ID,
+        ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+        ContactsContract.Contacts.PHOTO_URI,
     )
 
     private fun Cursor.toContacts(): List<Contact> {
@@ -61,13 +66,34 @@ class ContactsRepositoryImpl @Inject constructor(
     override suspend fun getContactsPaged(limit: Int, offset: Int): List<Contact> =
         withContext(ioDispatcher) {
             Log.d(TAG, "getContactsPaged: $limit, $offset")
+            val contacts = mutableListOf<Contact>()
             contentResolver.query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                projection,
+                ContactsContract.Contacts.CONTENT_URI,
+                contactProjection,
+                "${ContactsContract.Contacts.HAS_PHONE_NUMBER} > 0",
                 null,
-                null,
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC LIMIT $limit OFFSET $offset"
-            )?.toContacts() ?: emptyList()
+                "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} COLLATE NOCASE ASC LIMIT $limit OFFSET $offset"
+            )?.use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts._ID)
+                val nameIndex =
+                    cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+                val photoIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_URI)
+                while (cursor.moveToNext()) {
+                    contacts += Contact(
+                        id = cursor.getLong(idIndex),
+                        name = cursor.getString(nameIndex).orEmpty(),
+                        phone = "",
+                        image = cursor.getStringOrNull(photoIndex)?.toUri(),
+                    )
+                }
+            }
+
+            if (contacts.isEmpty()) return@withContext emptyList()
+            val phoneNumbers = loadPhoneNumbers(contacts.map { it.id })
+            contacts.mapNotNull { contact ->
+                val phone = phoneNumbers[contact.id] ?: return@mapNotNull null
+                contact.copy(phone = phone)
+            }
         }
 
     override suspend fun searchContacts(query: String, limit: Int, offset: Int): List<Contact> =
@@ -78,7 +104,7 @@ class ContactsRepositoryImpl @Inject constructor(
             val args = arrayOf("%$query%", "%$query%")
             contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                projection,
+                phoneProjection,
                 selection,
                 args,
                 "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC LIMIT $limit OFFSET $offset"
@@ -114,7 +140,7 @@ class ContactsRepositoryImpl @Inject constructor(
         ContactsContract.Contacts.CONTENT_URI
         contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-            projection,
+            phoneProjection,
             selection,
             selectionArgs,
             null
@@ -173,7 +199,7 @@ class ContactsRepositoryImpl @Inject constructor(
             val selection = "${ContactsContract.Contacts.STARRED} = 1"
             return contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                projection,
+                phoneProjection,
                 selection,
                 null,
                 ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
@@ -239,5 +265,34 @@ class ContactsRepositoryImpl @Inject constructor(
         )
     }
 
+    private fun loadPhoneNumbers(contactIds: List<Long>): Map<Long, String> {
+        if (contactIds.isEmpty()) return emptyMap()
+        val placeholders = contactIds.joinToString(",") { "?" }
+        val selection = "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} IN ($placeholders)"
+        val args = contactIds.map { it.toString() }.toTypedArray()
+        val numbers = mutableMapOf<Long, String>()
+        contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            arrayOf(
+                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                ContactsContract.CommonDataKinds.Phone.NUMBER,
+                ContactsContract.CommonDataKinds.Phone.IS_PRIMARY
+            ),
+            selection,
+            args,
+            "${ContactsContract.CommonDataKinds.Phone.IS_PRIMARY} DESC"
+        )?.use { cursor ->
+            val idIndex = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+            val numberIndex = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(idIndex)
+                val number = cursor.getString(numberIndex)
+                if (!numbers.containsKey(id) && !number.isNullOrBlank()) {
+                    numbers[id] = number
+                }
+            }
+        }
+        return numbers
+    }
 }
 
