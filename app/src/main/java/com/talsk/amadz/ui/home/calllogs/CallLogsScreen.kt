@@ -2,8 +2,12 @@ package com.talsk.amadz.ui.home.calllogs
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.talsk.amadz.domain.entity.CallLogData
@@ -21,6 +25,17 @@ fun CallLogsScreen(
     vm: CallLogsViewModel = hiltViewModel()
 ) {
     val callLogs: LazyPagingItems<CallLogUiModel> = vm.callLogs.collectAsLazyPagingItems()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner, callLogs) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                callLogs.refresh()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     CallLogsScreenInternal(
         callLogs = callLogs,
@@ -68,4 +83,3 @@ fun CallLogsScreenInternal(
     }
 
 }
-

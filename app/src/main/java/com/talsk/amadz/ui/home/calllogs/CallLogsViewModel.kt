@@ -8,8 +8,9 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.insertSeparators
 import androidx.paging.map
-import com.talsk.amadz.domain.entity.CallLogData
 import com.talsk.amadz.data.CallLogsPagingSource
+import com.talsk.amadz.domain.entity.CallLogData
+import com.talsk.amadz.domain.repo.CallLogRepository
 import com.talsk.amadz.util.isSameDay
 import com.talsk.amadz.util.startOfDay
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,12 +22,12 @@ import java.util.Date
 
 @HiltViewModel
 class CallLogsViewModel @Inject constructor(
-    private val callLogsPagingSource: CallLogsPagingSource,
+    private val callLogRepository: CallLogRepository,
 ) : ViewModel() {
     val callLogs: Flow<PagingData<CallLogUiModel>> = Pager(
         config = PagingConfig(pageSize = CallLogsPagingSource.PAGE_SIZE),
         initialKey = CallLogsPagingSource.FIRST_PAGE
-    ) { callLogsPagingSource }.flow
+    ) { CallLogsPagingSource(callLogRepository) }.flow
         .map { pagingData ->
             pagingData.map {
                 CallLogUiModel.Item(it)
