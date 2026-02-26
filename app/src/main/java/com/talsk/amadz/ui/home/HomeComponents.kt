@@ -44,6 +44,13 @@ data object RecentsKey : NavKey
 @Serializable
 data object ContactsKey : NavKey
 
+@Serializable
+data class CallLogHistoryKey(
+    val phone: String,
+    val contactName: String,
+    val contactId: Long?
+) : NavKey
+
 fun homeRoutes(): List<BottomNavMenu> {
 
     return listOf(

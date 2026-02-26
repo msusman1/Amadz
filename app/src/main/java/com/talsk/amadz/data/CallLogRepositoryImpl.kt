@@ -16,7 +16,6 @@ import com.talsk.amadz.domain.repo.ContactDetailProvider
 import com.talsk.amadz.domain.repo.ContactPhotoProvider
 import com.talsk.amadz.domain.repo.SimInfoProvider
 import com.talsk.amadz.ui.extensions.getStringOrEmpty
-import com.talsk.amadz.ui.extensions.map
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -42,54 +41,29 @@ class CallLogRepositoryImpl @Inject constructor(
         limit: Int,
         offset: Int
     ): List<CallLogData> = withContext(ioDispatcher) {
+        queryCallLogs(
+            selection = null,
+            selectionArgs = null,
+            sortOrder = "${CallLog.Calls.DATE} DESC LIMIT $limit OFFSET $offset"
+        )
+    }
 
-        val simsInfo = simInfoProvider.getSimsInfo()
-        val contactIdsByPhone = mutableMapOf<String, Long?>()
-        contentResolver.query(
+    @SuppressLint("MissingPermission")
+    override suspend fun getCallLogsByPhone(phone: String): List<CallLogData> = withContext(ioDispatcher) {
+        queryCallLogs(
+            selection = "${CallLog.Calls.NUMBER} = ?",
+            selectionArgs = arrayOf(phone),
+            sortOrder = "${CallLog.Calls.DATE} DESC"
+        )
+    }
+
+    @SuppressLint("MissingPermission")
+    override suspend fun deleteCallLogsByPhone(phone: String): Int = withContext(ioDispatcher) {
+        contentResolver.delete(
             CallLog.Calls.CONTENT_URI,
-            PROJECTION,
-            null,
-            null,
-            "${CallLog.Calls.DATE} DESC LIMIT $limit OFFSET $offset"
-        )?.use { cursor ->
-            cursor.map { row ->
-                val numberColumnIndex = row.getColumnIndex(CallLog.Calls.NUMBER)
-                val idColumnIndex = row.getColumnIndex(CallLog.Calls._ID)
-                val dateColumnIndex = row.getColumnIndex(CallLog.Calls.DATE)
-                val durationColumnIndex = row.getColumnIndex(CallLog.Calls.DURATION)
-                val phoneTypeColumnIndex = row.getColumnIndex(CallLog.Calls.TYPE)
-                val accountIdColumnIndex = row.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_ID)
-                val cachedPhotoUriIndex = row.getColumnIndex(CallLog.Calls.CACHED_PHOTO_URI)
-                val cachedLookupUriIndex = row.getColumnIndex(CallLog.Calls.CACHED_LOOKUP_URI)
-                val phone = row.getString(numberColumnIndex)
-                var simSlot: Int? = null
-                if (simsInfo.size > 1) {
-                    simSlot = simsInfo
-                        .find { it.accountId == row.getStringOrNull(accountIdColumnIndex) }
-                        ?.simSlotIndex ?: -1
-                }
-                val contactIdFromLog = row.getStringOrNull(cachedLookupUriIndex)
-                    ?.toUri()
-                    ?.let { uri -> runCatching { ContentUris.parseId(uri) }.getOrNull() }
-                val resolvedContactId = contactIdFromLog
-                    ?: contactIdsByPhone.getOrPut(phone) {
-                        contactDetailProvider.getContactByPhone(phone)?.id
-                    }
-
-                CallLogData(
-                    id = row.getLong(idColumnIndex),
-                    contactId = resolvedContactId,
-                    name = row.getStringOrEmpty(CallLog.Calls.CACHED_NAME),
-                    phone = phone,
-                    time = Date(row.getLong(dateColumnIndex)),
-                    callDuration = row.getLong(durationColumnIndex),
-                    callLogType = CallLogType.fromInt(row.getInt(phoneTypeColumnIndex)),
-                    simSlot = simSlot,
-                    image = row.getStringOrNull(cachedPhotoUriIndex)?.toUri()
-                        ?: contactPhotoProvider.getContactPhotoUri(phone)
-                )
-            }
-        } ?: emptyList()
+            "${CallLog.Calls.NUMBER} = ?",
+            arrayOf(phone)
+        )
     }
 
     @SuppressLint("MissingPermission")
@@ -142,6 +116,66 @@ class CallLogRepositoryImpl @Inject constructor(
             }
         }
 
+
+    private suspend fun queryCallLogs(
+        selection: String?,
+        selectionArgs: Array<String>?,
+        sortOrder: String
+    ): List<CallLogData> {
+        val simsInfo = simInfoProvider.getSimsInfo()
+        val contactIdsByPhone = mutableMapOf<String, Long?>()
+
+        return contentResolver.query(
+            CallLog.Calls.CONTENT_URI,
+            PROJECTION,
+            selection,
+            selectionArgs,
+            sortOrder
+        )?.use { cursor ->
+            val numberColumnIndex = cursor.getColumnIndex(CallLog.Calls.NUMBER)
+            val idColumnIndex = cursor.getColumnIndex(CallLog.Calls._ID)
+            val dateColumnIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
+            val durationColumnIndex = cursor.getColumnIndex(CallLog.Calls.DURATION)
+            val phoneTypeColumnIndex = cursor.getColumnIndex(CallLog.Calls.TYPE)
+            val accountIdColumnIndex = cursor.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_ID)
+            val cachedPhotoUriIndex = cursor.getColumnIndex(CallLog.Calls.CACHED_PHOTO_URI)
+            val cachedLookupUriIndex = cursor.getColumnIndex(CallLog.Calls.CACHED_LOOKUP_URI)
+
+            buildList {
+                while (cursor.moveToNext()) {
+                    val phone = cursor.getString(numberColumnIndex)
+                    var simSlot: Int? = null
+                    if (simsInfo.size > 1) {
+                        simSlot = simsInfo
+                            .find { it.accountId == cursor.getStringOrNull(accountIdColumnIndex) }
+                            ?.simSlotIndex ?: -1
+                    }
+                    val contactIdFromLog = cursor.getStringOrNull(cachedLookupUriIndex)
+                        ?.toUri()
+                        ?.let { uri -> runCatching { ContentUris.parseId(uri) }.getOrNull() }
+                    val resolvedContactId = contactIdFromLog
+                        ?: contactIdsByPhone.getOrPut(phone) {
+                            contactDetailProvider.getContactByPhone(phone)?.id
+                        }
+
+                    add(
+                        CallLogData(
+                            id = cursor.getLong(idColumnIndex),
+                            contactId = resolvedContactId,
+                            name = cursor.getStringOrEmpty(CallLog.Calls.CACHED_NAME),
+                            phone = phone,
+                            time = Date(cursor.getLong(dateColumnIndex)),
+                            callDuration = cursor.getLong(durationColumnIndex),
+                            callLogType = CallLogType.fromInt(cursor.getInt(phoneTypeColumnIndex)),
+                            simSlot = simSlot,
+                            image = cursor.getStringOrNull(cachedPhotoUriIndex)?.toUri()
+                                ?: contactPhotoProvider.getContactPhotoUri(phone)
+                        )
+                    )
+                }
+            }
+        } ?: emptyList()
+    }
 
     companion object {
         private val PROJECTION = arrayOf(
