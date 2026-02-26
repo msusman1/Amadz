@@ -64,9 +64,13 @@ class CallLogRepositoryImpl @Inject constructor(
                 val accountIdColumnIndex = row.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_ID)
                 val cachedPhotoUriIndex = row.getColumnIndex(CallLog.Calls.CACHED_PHOTO_URI)
                 val phone = row.getString(numberColumnIndex)
-                val simSlot = simsInfo
-                    .find { it.accountId == row.getStringOrNull(accountIdColumnIndex) }
-                    ?.simSlotIndex ?: -1
+                var simSlot: Int? = null
+                if (simsInfo.size > 1) {
+                    simSlot = simsInfo
+                        .find { it.accountId == row.getStringOrNull(accountIdColumnIndex) }
+                        ?.simSlotIndex ?: -1
+                }
+
                 CallLogData(
                     id = row.getLong(idColumnIndex),
                     name = row.getStringOrEmpty(CallLog.Calls.CACHED_NAME),

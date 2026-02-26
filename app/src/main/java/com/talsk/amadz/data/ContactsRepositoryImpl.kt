@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract
 import android.telephony.TelephonyManager
+import android.util.Log
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.database.getStringOrNull
 import androidx.core.net.toUri
@@ -36,6 +37,7 @@ class ContactsRepositoryImpl @Inject constructor(
     @ApplicationContext context: Context,
     @IODispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ContactRepository {
+    val TAG = "ContactsRepositoryImpl"
     val contentResolver: ContentResolver = context.contentResolver
     val telephonyManager = getSystemService(context, TelephonyManager::class.java)
     private val projection = arrayOf(
@@ -58,6 +60,7 @@ class ContactsRepositoryImpl @Inject constructor(
 
     override suspend fun getContactsPaged(limit: Int, offset: Int): List<Contact> =
         withContext(ioDispatcher) {
+            Log.d(TAG, "getContactsPaged: $limit, $offset")
             contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 projection,
@@ -85,53 +88,46 @@ class ContactsRepositoryImpl @Inject constructor(
     override suspend fun getContactByPhone(phoneNumber: String): Contact? =
         withContext(ioDispatcher) {
             val uri = Uri.withAppendedPath(
-                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
-                Uri.encode(phoneNumber)
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber)
             )
 
             contentResolver.query(
-                uri,
-                arrayOf(
+                uri, arrayOf(
                     ContactsContract.PhoneLookup._ID,
                     ContactsContract.PhoneLookup.DISPLAY_NAME,
                     ContactsContract.PhoneLookup.PHOTO_URI,
                     ContactsContract.PhoneLookup.NUMBER
-                ),
-                null,
-                null,
-                null
+                ), null, null, null
             )?.use { cursor ->
                 if (cursor.moveToFirst()) cursor.toContactDataForPhoneLookup() else null
             }
         }
 
-    suspend fun getContactByPhoneOld(phoneNumber: String): Contact? =
-        withContext(ioDispatcher) {
-            val normalizedPhone = normalizePhoneNumber(phoneNumber) ?: return@withContext null
+    suspend fun getContactByPhoneOld(phoneNumber: String): Contact? = withContext(ioDispatcher) {
+        val normalizedPhone = normalizePhoneNumber(phoneNumber) ?: return@withContext null
 
-            val selection = """
+        val selection = """
                 REPLACE(REPLACE(REPLACE(${ContactsContract.CommonDataKinds.Phone.NUMBER},
                 ' ', ''), '-', ''), '(', '') LIKE ?
             """.trimIndent()
-            val selectionArgs = arrayOf("%$normalizedPhone%")
-            ContactsContract.Contacts.CONTENT_URI
-            contentResolver.query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                projection,
-                selection,
-                selectionArgs,
-                null
-            )?.use {
-                if (it.moveToFirst()) it.toContactData() else null
-            }
+        val selectionArgs = arrayOf("%$normalizedPhone%")
+        ContactsContract.Contacts.CONTENT_URI
+        contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            projection,
+            selection,
+            selectionArgs,
+            null
+        )?.use {
+            if (it.moveToFirst()) it.toContactData() else null
         }
+    }
 
     override suspend fun getCompanyName(contactId: Long): String? = withContext(ioDispatcher) {
-        val orgWhere = ContactsContract.Data.CONTACT_ID + " = ? AND " +
-                ContactsContract.Data.MIMETYPE + " = ?"
+        val orgWhere =
+            ContactsContract.Data.CONTACT_ID + " = ? AND " + ContactsContract.Data.MIMETYPE + " = ?"
         val orgWhereParams = arrayOf(
-            contactId.toString(),
-            ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE
+            contactId.toString(), ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE
         )
         contentResolver.query(
             ContactsContract.Data.CONTENT_URI,
@@ -192,9 +188,7 @@ class ContactsRepositoryImpl @Inject constructor(
             }
         }
         contentResolver.registerContentObserver(
-            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-            true,
-            observer
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI, true, observer
         )
 
         awaitClose {

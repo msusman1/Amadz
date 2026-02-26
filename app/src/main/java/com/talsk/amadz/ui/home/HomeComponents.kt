@@ -201,7 +201,7 @@ fun CallLogItem(
                     contentDescription = null
                 )
                 Text(text = logData.time.toReadableFormat())
-                if (logData.simSlot >= 0) {
+                if (logData.simSlot != null && logData.simSlot >= 0) {
                     Text(
                         text = "SIM ${logData.simSlot + 1}",
                         style = MaterialTheme.typography.bodySmall,

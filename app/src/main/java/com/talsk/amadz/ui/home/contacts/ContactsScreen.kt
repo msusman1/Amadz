@@ -9,7 +9,6 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactItem
 import com.talsk.amadz.ui.components.LazyPagedColumn
-import com.talsk.amadz.ui.home.HeaderItem
 import com.talsk.amadz.ui.home.HeaderItemLargeBold
 
 
