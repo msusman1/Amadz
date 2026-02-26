@@ -7,6 +7,7 @@ import java.util.Date
 
 data class CallLogData(
     val id: Long,
+    val contactId: Long?,
     val name: String,
     val phone: String,
     val image: Uri?,
@@ -17,7 +18,7 @@ data class CallLogData(
 ) {
     fun toContactData(): Contact {
         return Contact(
-            id = id,
+            id = contactId ?: -1L,
             name = name,
             phone = phone,
             image = image,

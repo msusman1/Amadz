@@ -62,6 +62,9 @@ fun CallLogsScreenInternal(
                 is CallLogUiModel.Item -> {
                     CallLogItem(
                         logData = model.log,
+                        onCallLogClick = {
+                            //navigate to call log history
+                        },
                         onCallClick = { onCallClick(model.log.phone) },
                         onContactDetailClick = onContactDetailClick
                     )

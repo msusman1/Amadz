@@ -166,6 +166,7 @@ fun FavouriteItem(
 @Composable
 fun CallLogItem(
     logData: CallLogData,
+    onCallLogClick: (CallLogData) -> Unit,
     onCallClick: (CallLogData) -> Unit,
     onContactDetailClick: (CallLogData) -> Unit
 ) {
@@ -177,6 +178,7 @@ fun CallLogItem(
         }
     }
     ListItem(
+        modifier = Modifier.clickable { onCallLogClick(logData) },
         leadingContent = {
             ContactAvatar(
                 modifier = Modifier

@@ -2,27 +2,23 @@ package com.talsk.amadz.data
 
 import android.annotation.SuppressLint
 import android.content.ContentResolver
+import android.content.ContentUris
 import android.content.Context
 import android.provider.CallLog
-import android.util.Log
 import androidx.core.database.getStringOrNull
 import androidx.core.net.toUri
 import com.talsk.amadz.di.IODispatcher
-import com.talsk.amadz.domain.repo.SimInfoProvider
 import com.talsk.amadz.domain.entity.CallLogData
 import com.talsk.amadz.domain.entity.CallLogType
 import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.domain.repo.CallLogRepository
 import com.talsk.amadz.domain.repo.ContactDetailProvider
 import com.talsk.amadz.domain.repo.ContactPhotoProvider
-import com.talsk.amadz.domain.repo.ContactRepository
+import com.talsk.amadz.domain.repo.SimInfoProvider
 import com.talsk.amadz.ui.extensions.getStringOrEmpty
 import com.talsk.amadz.ui.extensions.map
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Date
 import javax.inject.Inject
@@ -48,6 +44,7 @@ class CallLogRepositoryImpl @Inject constructor(
     ): List<CallLogData> = withContext(ioDispatcher) {
 
         val simsInfo = simInfoProvider.getSimsInfo()
+        val contactIdsByPhone = mutableMapOf<String, Long?>()
         contentResolver.query(
             CallLog.Calls.CONTENT_URI,
             PROJECTION,
@@ -63,6 +60,7 @@ class CallLogRepositoryImpl @Inject constructor(
                 val phoneTypeColumnIndex = row.getColumnIndex(CallLog.Calls.TYPE)
                 val accountIdColumnIndex = row.getColumnIndex(CallLog.Calls.PHONE_ACCOUNT_ID)
                 val cachedPhotoUriIndex = row.getColumnIndex(CallLog.Calls.CACHED_PHOTO_URI)
+                val cachedLookupUriIndex = row.getColumnIndex(CallLog.Calls.CACHED_LOOKUP_URI)
                 val phone = row.getString(numberColumnIndex)
                 var simSlot: Int? = null
                 if (simsInfo.size > 1) {
@@ -70,9 +68,17 @@ class CallLogRepositoryImpl @Inject constructor(
                         .find { it.accountId == row.getStringOrNull(accountIdColumnIndex) }
                         ?.simSlotIndex ?: -1
                 }
+                val contactIdFromLog = row.getStringOrNull(cachedLookupUriIndex)
+                    ?.toUri()
+                    ?.let { uri -> runCatching { ContentUris.parseId(uri) }.getOrNull() }
+                val resolvedContactId = contactIdFromLog
+                    ?: contactIdsByPhone.getOrPut(phone) {
+                        contactDetailProvider.getContactByPhone(phone)?.id
+                    }
 
                 CallLogData(
                     id = row.getLong(idColumnIndex),
+                    contactId = resolvedContactId,
                     name = row.getStringOrEmpty(CallLog.Calls.CACHED_NAME),
                     phone = phone,
                     time = Date(row.getLong(dateColumnIndex)),
@@ -147,6 +153,7 @@ class CallLogRepositoryImpl @Inject constructor(
             CallLog.Calls.TYPE,
             CallLog.Calls.PHONE_ACCOUNT_ID,
             CallLog.Calls.CACHED_PHOTO_URI,
+            CallLog.Calls.CACHED_LOOKUP_URI,
         )
     }
 

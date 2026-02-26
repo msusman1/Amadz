@@ -115,7 +115,7 @@ fun HomeScreen(
                 }
                 entry(RecentsKey) {
                     CallLogsScreen(onContactDetailClick = {
-                        context.openContactDetailScreen(it.id)
+                        it.contactId?.let(context::openContactDetailScreen)
                     }, onCallClick = {
                         context.dial(it)
                     })
@@ -131,4 +131,3 @@ fun HomeScreen(
             })
     }
 }
-
