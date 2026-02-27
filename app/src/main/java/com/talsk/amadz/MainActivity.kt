@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.talsk.amadz.core.dial
 import com.talsk.amadz.ui.MainNavGraph
 import com.talsk.amadz.ui.onboarding.OnboardingActivity
 import com.talsk.amadz.ui.theme.AmadzTheme
@@ -22,7 +23,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        handleDialIntent(intent)
+        if (savedInstanceState == null) {
+            handleDialIntent(intent)
+        }
         checkPermission()
         setContent {
             AmadzTheme {
@@ -37,12 +40,26 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleDialIntent(intent: Intent) {
-        if (intent.action == Intent.ACTION_DIAL || intent.action == Intent.ACTION_VIEW) {
-            val data: Uri? = intent.data
-            val phoneNumber = data?.schemeSpecificPart
-            if (!phoneNumber.isNullOrBlank()) {
-            }
+        val phoneNumber = extractPhoneNumber(intent) ?: return
+
+        when (intent.action) {
+            Intent.ACTION_CALL,
+            Intent.ACTION_VOICE_COMMAND,
+            Intent.ACTION_CALL_BUTTON,
+            Intent.ACTION_DIAL,
+            Intent.ACTION_VIEW -> dial(phoneNumber)
         }
+    }
+
+    private fun extractPhoneNumber(intent: Intent): String? {
+        val data: Uri? = intent.data
+        val fromData = data?.schemeSpecificPart?.takeIf { it.isNotBlank() }
+        if (fromData != null) return fromData
+
+        val fromExtra = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER)?.takeIf { it.isNotBlank() }
+        if (fromExtra != null) return fromExtra
+
+        return null
     }
 
 
