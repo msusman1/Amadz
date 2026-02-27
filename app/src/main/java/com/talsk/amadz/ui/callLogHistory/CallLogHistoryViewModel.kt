@@ -2,6 +2,7 @@ package com.talsk.amadz.ui.callLogHistory
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.talsk.amadz.App
 import com.talsk.amadz.domain.entity.CallLogData
 import com.talsk.amadz.domain.repo.BlockedNumberRepository
 import com.talsk.amadz.domain.repo.CallLogRepository
@@ -50,6 +51,7 @@ class CallLogHistoryViewModel @Inject constructor(
         if (phone.isBlank()) return
         viewModelScope.launch {
             callLogRepository.deleteCallLogsByPhone(phone)
+            App.needCallLogRefresh = true
             _uiState.value = _uiState.value.copy(logs = emptyList())
         }
     }

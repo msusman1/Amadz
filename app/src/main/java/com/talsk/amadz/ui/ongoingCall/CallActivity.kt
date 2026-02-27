@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.talsk.amadz.App
 import com.talsk.amadz.core.LockScreenController
 import com.talsk.amadz.core.ProxyController
 import com.talsk.amadz.ui.theme.AmadzTheme
@@ -22,6 +23,7 @@ class CallActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         ProxyController(this, lifecycle)
         LockScreenController.enable(this)
+        App.needCallLogRefresh = true
         setContent {
             val uiState by vm.callState.collectAsStateWithLifecycle()
             val contactDetail by vm.contact.collectAsStateWithLifecycle()

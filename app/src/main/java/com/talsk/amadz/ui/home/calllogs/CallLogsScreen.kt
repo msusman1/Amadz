@@ -10,6 +10,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.talsk.amadz.App
 import com.talsk.amadz.domain.entity.CallLogData
 import com.talsk.amadz.ui.components.LazyPagedColumn
 import com.talsk.amadz.ui.home.CallLogItem
@@ -30,7 +31,10 @@ fun CallLogsScreen(
     DisposableEffect(lifecycleOwner, callLogs) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                callLogs.refresh()
+                if (App.needCallLogRefresh) {
+                    App.needCallLogRefresh = false
+                    callLogs.refresh()
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
