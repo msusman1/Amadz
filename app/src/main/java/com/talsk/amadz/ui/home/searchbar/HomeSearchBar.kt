@@ -35,16 +35,16 @@ import com.talsk.amadz.ui.home.HeaderItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeSearchBar(
-    isSearchFieldActive: Boolean,
     searchActive: Boolean,
     contacts: LazyPagingItems<Contact>,
     query: String,
-    onSearchBarActiveChange: (Boolean) -> Unit,
+    onSearchBarClick: () -> Unit,
+    onSearchCloseClick: () -> Unit,
     onContactDetailClick: (Contact) -> Unit,
     onCallClick: (Contact) -> Unit,
     onQueryChanged: (String) -> Unit
 ) {
-    val padding by animateDpAsState(if (isSearchFieldActive) 0.dp else 16.dp)
+    val padding by animateDpAsState(if (searchActive) 0.dp else 16.dp)
 
     SearchBar(
         inputField = {
@@ -52,13 +52,17 @@ fun HomeSearchBar(
                 query = query,
                 onQueryChange = onQueryChanged,
                 onSearch = onQueryChanged,
-                expanded = isSearchFieldActive,
-                onExpandedChange = onSearchBarActiveChange,
+                expanded = searchActive,
+                onExpandedChange = {
+                    if (it) {
+                        onSearchBarClick()
+                    }
+                },
                 enabled = true,
                 placeholder = { Text("Search Contacts") },
                 leadingIcon = {
-                    if (isSearchFieldActive) {
-                        IconButton(onClick = { onSearchBarActiveChange(false) }) {
+                    if (searchActive) {
+                        IconButton(onClick = onSearchCloseClick) {
                             Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Back")
                         }
                     } else {

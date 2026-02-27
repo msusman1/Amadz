@@ -1,6 +1,5 @@
 package com.talsk.amadz.ui.home
 
-import android.util.Log
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -55,27 +54,25 @@ fun HomeScreen(
         skipHiddenState = false
     )
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState)
-
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
-    var isSearchFieldActive by rememberSaveable { mutableStateOf(false) }
     var dialPadPhone by rememberSaveable { mutableStateOf("") }
-
     val currentDestination: NavKey? = backStack.lastOrNull()
     val isHomeTab =
         currentDestination == FavouritesKey ||
                 currentDestination == RecentsKey ||
                 currentDestination == ContactsKey
 
-
     Scaffold(
         floatingActionButton = {
-            DialFab(
-                visible = !(isSearchActive || bottomSheetState.isVisible),
-                onClick = {
-                    isSearchFieldActive = true
-                    coroutineScope.launch { bottomSheetState.expand() }
-                }
-            )
+            if (isHomeTab) {
+                DialFab(
+                    visible = !isSearchActive,
+                    onClick = {
+                        isSearchActive = true
+                        coroutineScope.launch { bottomSheetState.expand() }
+                    }
+                )
+            }
         },
         topBar = {
             if (isHomeTab) {
@@ -83,22 +80,22 @@ fun HomeScreen(
                     contacts = contacts,
                     query = query,
                     searchActive = isSearchActive,
-                    isSearchFieldActive = isSearchFieldActive,
-                    onSearchBarActiveChange = {
-                        isSearchActive = it
-                        coroutineScope.launch { bottomSheetState.hide() }
+                    onSearchBarClick = {
+                        isSearchActive = true
+                    },
+                    onSearchCloseClick = {
+                        isSearchActive = false
                     },
                     onContactDetailClick = { context.openContactDetailScreen(it.id) },
                     onCallClick = { context.dial(it.phone) },
                     onQueryChanged = vm::onSearchQueryChanged
-
                 )
             }
         },
         bottomBar = {
             if (isHomeTab) {
                 AnimatedBottomBar(
-                    visible = !(isSearchActive || bottomSheetState.isVisible),
+                    visible = !isSearchActive,
                     backStack = backStack
                 )
             }
