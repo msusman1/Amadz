@@ -8,4 +8,5 @@ interface CallLogRepository {
     suspend fun getCallLogsByPhone(phone: String): List<CallLogData>
     suspend fun deleteCallLogsByPhone(phone: String): Int
     suspend fun getFrequentCalledContacts(): List<Contact>
+    suspend fun searchCallLogContacts(query: String, limit: Int, offset: Int): List<Contact>
 }

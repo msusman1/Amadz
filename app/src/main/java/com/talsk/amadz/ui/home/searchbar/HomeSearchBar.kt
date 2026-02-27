@@ -41,6 +41,7 @@ import com.talsk.amadz.core.dial
 import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactItem
 import com.talsk.amadz.ui.components.LazyPagedColumn
+import com.talsk.amadz.ui.extensions.openContactAddScreen
 import com.talsk.amadz.ui.extensions.openContactDetailScreen
 import com.talsk.amadz.ui.home.HeaderItem
 import com.talsk.amadz.ui.home.KeyPad
@@ -71,6 +72,7 @@ fun HomeSearchBar(
     var dialPadPhone by rememberSaveable { mutableStateOf("") }
 
     BackHandler(enabled = searchBarState.isActive()) {
+        vm.onSearchQueryChanged("")
         onSearchCloseClick()
     }
     SearchBar(
@@ -82,13 +84,19 @@ fun HomeSearchBar(
                     onSearch = vm::onSearchQueryChanged,
                     expanded = searchBarState.isActive(),
                     onExpandedChange = { expanded ->
-                        if (expanded) onSearchBarClick() else onSearchCloseClick()
+                        if (expanded) onSearchBarClick() else {
+                            vm.onSearchQueryChanged("")
+                            onSearchCloseClick()
+                        }
                     },
                     enabled = true,
                     placeholder = { Text("Search Contacts") },
                     leadingIcon = {
                         if (searchBarState.isActive()) {
-                            IconButton(onClick = onSearchCloseClick) {
+                            IconButton(onClick = {
+                                vm.onSearchQueryChanged("")
+                                onSearchCloseClick()
+                            }) {
                                 Icon(
                                     Icons.AutoMirrored.Default.ArrowBack,
                                     contentDescription = "Back"
@@ -112,7 +120,10 @@ fun HomeSearchBar(
         },
         expanded = searchBarState.isActive(),
         onExpandedChange = { expanded ->
-            if (expanded) onSearchBarClick() else onSearchCloseClick()
+            if (expanded) onSearchBarClick() else {
+                vm.onSearchQueryChanged("")
+                onSearchCloseClick()
+            }
         },
         modifier = Modifier
             .fillMaxWidth()
@@ -134,7 +145,10 @@ fun HomeSearchBar(
                         .fillMaxWidth()
                         .weight(1f),
                     filteredContacts = contacts,
-                    onContactDetailClick = { context.openContactDetailScreen(it.id) },
+                    onContactDetailClick = {
+                        if (it.id > 0) context.openContactDetailScreen(it.id)
+                        else context.openContactAddScreen(it.phone)
+                    },
                     onCallClick = { context.dial(it.phone) }
                 )
                 if (searchBarState == SearchBarState.EXPANDED_WITH_DIAL_PAD) {
@@ -178,7 +192,7 @@ private fun SearchResults(
 ) {
     Column(modifier = modifier) {
         if (filteredContacts.itemCount > 0) {
-            HeaderItem(text = "All Contacts")
+            HeaderItem(text = "Suggestions")
         }
         LazyPagedColumn(
             pagingItems = filteredContacts,

@@ -25,11 +25,19 @@ class ContactsSearchPagingSource @Inject constructor(
             val data = if (query.isEmpty()) {
                 callLogRepository.getFrequentCalledContacts()
             } else {
-                contactRepository.searchContacts(
+                val contacts = contactRepository.searchContacts(
                     query = query,
                     limit = PAGE_SIZE,
                     offset = offset
                 )
+                val callLogContacts = callLogRepository.searchCallLogContacts(
+                    query = query,
+                    limit = PAGE_SIZE,
+                    offset = offset
+                )
+                (contacts + callLogContacts)
+                    .distinctBy { it.phone.replace(" ", "") }
+                    .take(PAGE_SIZE)
             }
 
             LoadResult.Page(

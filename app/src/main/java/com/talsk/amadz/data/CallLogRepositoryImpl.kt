@@ -116,6 +116,57 @@ class CallLogRepositoryImpl @Inject constructor(
             }
         }
 
+    @SuppressLint("MissingPermission")
+    override suspend fun searchCallLogContacts(
+        query: String,
+        limit: Int,
+        offset: Int
+    ): List<Contact> = withContext(ioDispatcher) {
+        if (query.isBlank()) return@withContext emptyList()
+
+        val normalizedQuery = query.trim()
+        val selection = """
+            ${CallLog.Calls.NUMBER} LIKE ?
+            OR ${CallLog.Calls.CACHED_NAME} LIKE ?
+        """.trimIndent()
+        val selectionArgs = arrayOf("%$normalizedQuery%", "%$normalizedQuery%")
+
+        contentResolver.query(
+            CallLog.Calls.CONTENT_URI,
+            arrayOf(
+                CallLog.Calls.NUMBER,
+                CallLog.Calls.CACHED_NAME,
+                CallLog.Calls.CACHED_PHOTO_URI
+            ),
+            selection,
+            selectionArgs,
+            "${CallLog.Calls.DATE} DESC LIMIT $limit OFFSET $offset"
+        )?.use { cursor ->
+            val numberIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
+            val nameIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
+            val photoIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.CACHED_PHOTO_URI)
+            val byNumber = LinkedHashMap<String, Contact>()
+
+            while (cursor.moveToNext()) {
+                val phone = cursor.getString(numberIndex).orEmpty()
+                if (phone.isBlank() || byNumber.containsKey(phone)) continue
+
+                val savedContact = contactDetailProvider.getContactByPhone(phone)
+                val fallbackName = cursor.getStringOrNull(nameIndex).orEmpty().ifBlank { "Unknown" }
+                val fallbackImage = cursor.getStringOrNull(photoIndex)?.toUri()
+
+                byNumber[phone] = savedContact ?: Contact(
+                    id = -1,
+                    name = fallbackName,
+                    phone = phone,
+                    image = fallbackImage
+                )
+            }
+
+            byNumber.values.toList()
+        } ?: emptyList()
+    }
+
 
     private suspend fun queryCallLogs(
         selection: String?,
