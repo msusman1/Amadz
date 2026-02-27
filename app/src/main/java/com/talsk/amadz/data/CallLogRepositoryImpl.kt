@@ -107,13 +107,14 @@ class CallLogRepositoryImpl @Inject constructor(
             // Top 10 most frequently called saved numbers
             val topNumbers = callCounts.entries
                 .sortedByDescending { it.value }
+                .distinct()
                 .take(10)
                 .map { it.key }
 
             // Safe: all numbers are guaranteed to be saved contacts
             return@withContext topNumbers.mapNotNull {
                 contactDetailProvider.getContactByPhone(it)
-            }
+            }.distinctBy { it.id }
         }
 
     @SuppressLint("MissingPermission")
