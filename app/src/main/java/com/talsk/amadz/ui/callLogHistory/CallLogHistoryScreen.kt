@@ -46,6 +46,7 @@ fun CallLogHistoryScreen(
     contactName: String,
     onBackClick: () -> Unit,
     onCallClick: (String) -> Unit,
+    onAddContactClick: (String) -> Unit,
     vm: CallLogHistoryViewModel = hiltViewModel()
 ) {
     val uiState by vm.uiState.collectAsStateWithLifecycle()
@@ -56,6 +57,7 @@ fun CallLogHistoryScreen(
         state = uiState,
         onBackClick = onBackClick,
         onCallClick = onCallClick,
+        onAddContactClick = onAddContactClick,
         onDeleteHistory = vm::deleteHistory,
         onToggleBlocked = vm::toggleBlocked
     )
@@ -67,6 +69,7 @@ private fun CallLogHistoryScreenInternal(
     state: CallLogHistoryUiState,
     onBackClick: () -> Unit,
     onCallClick: (String) -> Unit,
+    onAddContactClick: (String) -> Unit,
     onDeleteHistory: () -> Unit,
     onToggleBlocked: () -> Unit
 ) {
@@ -92,6 +95,14 @@ private fun CallLogHistoryScreenInternal(
                     }
                 },
                 actions = {
+                    if (!state.isSavedContact && state.phone.isNotBlank()) {
+                        IconButton(onClick = { onAddContactClick(state.phone) }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.baseline_person_add_alt_24),
+                                contentDescription = "Add contact"
+                            )
+                        }
+                    }
                     IconButton(onClick = { menuExpanded = true }) {
                         Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Menu")
                     }

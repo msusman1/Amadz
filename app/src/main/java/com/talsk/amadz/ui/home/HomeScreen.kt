@@ -20,6 +20,7 @@ import com.talsk.amadz.core.dial
 import com.talsk.amadz.ui.callLogHistory.CallLogHistoryScreen
 import com.talsk.amadz.ui.components.AnimatedBottomBar
 import com.talsk.amadz.ui.components.DialFab
+import com.talsk.amadz.ui.extensions.openContactAddScreen
 import com.talsk.amadz.ui.extensions.openContactDetailScreen
 import com.talsk.amadz.ui.home.calllogs.CallLogsScreen
 import com.talsk.amadz.ui.home.contacts.ContactsScreen
@@ -124,7 +125,10 @@ fun HomeScreen() {
                         },
                         onCallClick = { phone ->
                             context.dial(phone)
-                        }
+                        },
+                        onAddContactClick = { phone ->
+                            context.openContactAddScreen(phone)
+                        },
                     )
                 }
             }

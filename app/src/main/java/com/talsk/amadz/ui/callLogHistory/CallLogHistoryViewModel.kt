@@ -39,7 +39,8 @@ class CallLogHistoryViewModel @Inject constructor(
                 title = contact?.name ?: cachedName.ifBlank { phone },
                 phone = contact?.phone ?: phone,
                 logs = logs,
-                isBlocked = blockedNumberRepository.isBlocked(contact?.phone ?: phone)
+                isBlocked = blockedNumberRepository.isBlocked(contact?.phone ?: phone),
+                isSavedContact = contact != null
             )
         }
     }
@@ -71,5 +72,6 @@ data class CallLogHistoryUiState(
     val title: String = "",
     val phone: String = "",
     val logs: List<CallLogData> = emptyList(),
-    val isBlocked: Boolean = false
+    val isBlocked: Boolean = false,
+    val isSavedContact: Boolean = false
 )
