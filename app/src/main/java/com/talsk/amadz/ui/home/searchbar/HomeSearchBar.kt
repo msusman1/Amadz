@@ -2,6 +2,8 @@ package com.talsk.amadz.ui.home.searchbar
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,13 +20,18 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarDefaults.inputFieldColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,6 +69,7 @@ fun HomeSearchBar(
     val query by vm.query.collectAsStateWithLifecycle()
     val padding by animateDpAsState(if (searchBarState == SearchBarState.COLLAPSED) 16.dp else 0.dp)
     var dialPadPhone by rememberSaveable { mutableStateOf("") }
+
     BackHandler(enabled = searchBarState.isActive()) {
         onSearchCloseClick()
     }
@@ -73,7 +81,9 @@ fun HomeSearchBar(
                     onQueryChange = vm::onSearchQueryChanged,
                     onSearch = vm::onSearchQueryChanged,
                     expanded = searchBarState.isActive(),
-                    onExpandedChange = { if (it) onSearchBarClick() },
+                    onExpandedChange = { expanded ->
+                        if (expanded) onSearchBarClick() else onSearchCloseClick()
+                    },
                     enabled = true,
                     placeholder = { Text("Search Contacts") },
                     leadingIcon = {
@@ -101,7 +111,9 @@ fun HomeSearchBar(
             }
         },
         expanded = searchBarState.isActive(),
-        onExpandedChange = { },
+        onExpandedChange = { expanded ->
+            if (expanded) onSearchBarClick() else onSearchCloseClick()
+        },
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = padding),
@@ -116,36 +128,41 @@ fun HomeSearchBar(
             ),
         ),
         content = {
-            SearchResults(
-                filteredContacts = contacts,
-                onContactDetailClick = { context.openContactDetailScreen(it.id) },
-                onCallClick = { context.dial(it.phone) }
-            )
-            if (searchBarState == SearchBarState.EXPANDED_WITH_DIAL_PAD) {
-                KeyPad(
-                    modifier = Modifier.weight(1.0f),
-                    phone = dialPadPhone,
-                    onTapDown = { char ->
-                        dialPadPhone += char
-                        vm.onSearchQueryChanged(dialPadPhone)
-                    },
-                    onTapUp = {},
-                    onBackSpaceClicked = {
-                        dialPadPhone = dialPadPhone.dropLast(1)
-                        vm.onSearchQueryChanged(dialPadPhone)
-                    },
-                    onClearClicked = {
-                        dialPadPhone = ""
-                        vm.onSearchQueryChanged("")
-                    },
-                    onCallClicked = {
-                        if (dialPadPhone.isNotBlank()) {
-                            context.dial(dialPadPhone)
-                        }
-                    },
-                    showCallButton = true,
-                    showClearButton = true
+            Column(modifier = Modifier.fillMaxSize()) {
+                SearchResults(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    filteredContacts = contacts,
+                    onContactDetailClick = { context.openContactDetailScreen(it.id) },
+                    onCallClick = { context.dial(it.phone) }
                 )
+                if (searchBarState == SearchBarState.EXPANDED_WITH_DIAL_PAD) {
+                    KeyPad(
+                        modifier = Modifier.fillMaxWidth(),
+                        phone = dialPadPhone,
+                        onTapDown = { char ->
+                            dialPadPhone += char
+                            vm.onSearchQueryChanged(dialPadPhone)
+                        },
+                        onTapUp = {},
+                        onBackSpaceClicked = {
+                            dialPadPhone = dialPadPhone.dropLast(1)
+                            vm.onSearchQueryChanged(dialPadPhone)
+                        },
+                        onClearClicked = {
+                            dialPadPhone = ""
+                            vm.onSearchQueryChanged("")
+                        },
+                        onCallClicked = {
+                            if (dialPadPhone.isNotBlank()) {
+                                context.dial(dialPadPhone)
+                            }
+                        },
+                        showCallButton = true,
+                        showClearButton = true
+                    )
+                }
             }
         }
 
@@ -154,25 +171,33 @@ fun HomeSearchBar(
 
 @Composable
 private fun SearchResults(
+    modifier: Modifier = Modifier,
     filteredContacts: LazyPagingItems<Contact>,
     onContactDetailClick: (Contact) -> Unit,
     onCallClick: (Contact) -> Unit,
 ) {
-    if (filteredContacts.itemCount > 0) {
-        HeaderItem(text = "All Contacts")
-    }
-    LazyPagedColumn(filteredContacts) {
-        items(
-            count = filteredContacts.itemCount,
-            key = {
-                filteredContacts[it]?.let { contact -> "${contact.id}_${contact.phone}" } ?: it
-            }) { index ->
-            filteredContacts[index]?.let {
-                ContactItem(
-                    contact = it,
-                    onContactDetailClick = onContactDetailClick,
-                    onCallClick = onCallClick
-                )
+    Column(modifier = modifier) {
+        if (filteredContacts.itemCount > 0) {
+            HeaderItem(text = "All Contacts")
+        }
+        LazyPagedColumn(
+            pagingItems = filteredContacts,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            items(
+                count = filteredContacts.itemCount,
+                key = {
+                    filteredContacts[it]?.let { contact -> "${contact.id}_${contact.phone}" } ?: it
+                }) { index ->
+                filteredContacts[index]?.let {
+                    ContactItem(
+                        contact = it,
+                        onContactDetailClick = onContactDetailClick,
+                        onCallClick = onCallClick
+                    )
+                }
             }
         }
     }
