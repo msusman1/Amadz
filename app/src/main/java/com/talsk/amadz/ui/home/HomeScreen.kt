@@ -6,10 +6,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -17,9 +19,12 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.talsk.amadz.core.dial
+import com.talsk.amadz.core.hasDefaultCallingSimConfigured
+import com.talsk.amadz.domain.entity.SimInfo
 import com.talsk.amadz.ui.callLogHistory.CallLogHistoryScreen
 import com.talsk.amadz.ui.components.AnimatedBottomBar
 import com.talsk.amadz.ui.components.DialFab
+import com.talsk.amadz.ui.components.SimSelectionDialog
 import com.talsk.amadz.ui.extensions.openContactAddScreen
 import com.talsk.amadz.ui.extensions.openContactDetailScreen
 import com.talsk.amadz.ui.home.calllogs.CallLogsScreen
@@ -34,12 +39,25 @@ import com.talsk.amadz.ui.home.searchbar.SearchBarState
 fun HomeScreen() {
     val backStack = rememberNavBackStack(RecentsKey)
     val context = LocalContext.current
+    val vm: HomeViewModel = hiltViewModel()
     var searchBarState by rememberSaveable { mutableStateOf(SearchBarState.COLLAPSED) }
+    var pendingDialPhone by remember { mutableStateOf<String?>(null) }
+    var simOptions by remember { mutableStateOf<List<SimInfo>>(emptyList()) }
     val currentDestination: NavKey? = backStack.lastOrNull()
     val isHomeTab =
         currentDestination == FavouritesKey ||
                 currentDestination == RecentsKey ||
                 currentDestination == ContactsKey
+
+    fun requestDial(phone: String) {
+        val sims = vm.getSimsInfo()
+        if (sims.size > 1 && !context.hasDefaultCallingSimConfigured()) {
+            pendingDialPhone = phone
+            simOptions = sims.sortedBy { it.simSlotIndex }
+        } else {
+            context.dial(phone)
+        }
+    }
 
     Scaffold(
         floatingActionButton = {
@@ -61,7 +79,8 @@ fun HomeScreen() {
                     },
                     onSearchCloseClick = {
                         searchBarState = SearchBarState.COLLAPSED
-                    }
+                    },
+                    onCallClick = ::requestDial
                 )
             }
         },
@@ -85,7 +104,7 @@ fun HomeScreen() {
             entryProvider = entryProvider {
                 entry(FavouritesKey) {
                     FavouritesScreen(
-                        onCallClick = { context.dial(it.phone) },
+                        onCallClick = { requestDial(it.phone) },
                         onContactDetailCLick = { context.openContactDetailScreen(it.id) }
                     )
                 }
@@ -95,7 +114,7 @@ fun HomeScreen() {
                             it.contactId?.let(context::openContactDetailScreen)
                         },
                         onCallClick = {
-                            context.dial(it)
+                            requestDial(it)
                         },
                         onCallLogClick = {
                             backStack.add(
@@ -111,7 +130,7 @@ fun HomeScreen() {
                 entry(ContactsKey) {
                     ContactsScreen(
                         onContactDetailClick = { context.openContactDetailScreen(it.id) },
-                        onCallClick = { context.dial(it.phone) }
+                        onCallClick = { requestDial(it.phone) }
                     )
                 }
                 entry<CallLogHistoryKey> {
@@ -124,7 +143,7 @@ fun HomeScreen() {
                             }
                         },
                         onCallClick = { phone ->
-                            context.dial(phone)
+                            requestDial(phone)
                         },
                         onAddContactClick = { phone ->
                             context.openContactAddScreen(phone)
@@ -134,5 +153,21 @@ fun HomeScreen() {
             }
         )
 
+    }
+
+    if (pendingDialPhone != null && simOptions.isNotEmpty()) {
+        SimSelectionDialog(
+            sims = simOptions,
+            onSimSelected = { sim ->
+                val phone = pendingDialPhone ?: return@SimSelectionDialog
+                context.dial(phone = phone, accountId = sim.accountId)
+                pendingDialPhone = null
+                simOptions = emptyList()
+            },
+            onDismiss = {
+                pendingDialPhone = null
+                simOptions = emptyList()
+            }
+        )
     }
 }

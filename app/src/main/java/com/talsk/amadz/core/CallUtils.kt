@@ -1,12 +1,16 @@
 package com.talsk.amadz.core
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.telecom.Call
+import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
+import android.telephony.SubscriptionManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.getSystemService
 import java.net.URLDecoder
@@ -21,17 +25,40 @@ fun Call.callerName(): String {
 
 }
 
-fun Call.callPhone(): String {
+fun Call.callerPhone(): String {
     val encodedString = this.details.handle.toString().removePrefix("tel:")
     return URLDecoder.decode(encodedString, "UTF-8")
 
 }
 
-fun Context.dial(phone: String) {
+@SuppressLint("MissingPermission")
+fun Context.hasDefaultCallingSimConfigured(): Boolean {
+    val telecomManager = this.getSystemService<TelecomManager>() ?: return false
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        runCatching {
+            telecomManager.userSelectedOutgoingPhoneAccount != null
+        }.getOrDefault(false)
+    } else {
+        runCatching {
+            SubscriptionManager.getDefaultVoiceSubscriptionId() !=
+                    SubscriptionManager.INVALID_SUBSCRIPTION_ID
+        }.getOrDefault(false)
+    }
+}
+
+fun Context.dial(phone: String, accountId: String? = null) {
     val telecomManager = this.getSystemService<TelecomManager>()
     val uri = Uri.fromParts("tel", phone, null)
     val extras = Bundle()
     extras.putBoolean(TelecomManager.EXTRA_START_CALL_WITH_SPEAKERPHONE, false)
+    if (accountId != null && telecomManager != null) {
+        val matchingHandle: PhoneAccountHandle? = runCatching {
+            telecomManager.callCapablePhoneAccounts.firstOrNull { it.id == accountId }
+        }.getOrNull()
+        if (matchingHandle != null) {
+            extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, matchingHandle)
+        }
+    }
     if (ActivityCompat.checkSelfPermission(
             this,
             Manifest.permission.CALL_PHONE

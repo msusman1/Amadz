@@ -22,18 +22,13 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarDefaults.inputFieldColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -41,7 +36,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.talsk.amadz.R
-import com.talsk.amadz.core.dial
 import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactItem
 import com.talsk.amadz.ui.components.LazyPagedColumn
@@ -67,6 +61,7 @@ fun HomeSearchBar(
     searchBarState: SearchBarState,
     onSearchBarClick: () -> Unit,
     onSearchCloseClick: () -> Unit,
+    onCallClick: (String) -> Unit,
     vm: SearchViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -154,7 +149,7 @@ fun HomeSearchBar(
                         if (it.id > 0) context.openContactDetailScreen(it.id)
                         else context.openContactAddScreen(it.phone)
                     },
-                    onCallClick = { context.dial(it.phone) }
+                    onCallClick = { onCallClick(it.phone) }
                 )
                 if (searchBarState == SearchBarState.EXPANDED_WITH_DIAL_PAD) {
                     KeyPad(
@@ -175,7 +170,7 @@ fun HomeSearchBar(
                         },
                         onCallClicked = {
                             if (dialPadPhone.isNotBlank()) {
-                                context.dial(dialPadPhone)
+                                onCallClick(dialPadPhone)
                             }
                         },
                         showCallButton = true,

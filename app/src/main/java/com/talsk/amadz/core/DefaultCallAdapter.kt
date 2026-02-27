@@ -69,7 +69,7 @@ class DefaultCallAdapter @Inject constructor(
         override fun onStateChanged(call: Call, state: Int) {
             Log.d(
                 TAG,
-                "onStateChanged: state:${state}, Phone:${call.callPhone()}, Name :${call.callerName()}"
+                "onStateChanged: state:${state}, Phone:${call.callerPhone()}, Name :${call.callerName()}"
             )
             mapCallState(call, state)
         }
@@ -128,7 +128,7 @@ class DefaultCallAdapter @Inject constructor(
     private fun mapCallState(call: Call, state: Int) {
         if (state == Call.STATE_ACTIVE) {
             scope.launch {
-                notificationController.displayOngoingCallNotification(call.callPhone())
+                notificationController.displayOngoingCallNotification(call.callerPhone())
             }
         }
 

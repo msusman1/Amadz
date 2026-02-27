@@ -12,10 +12,7 @@ import com.talsk.amadz.domain.NotificationController
 import com.talsk.amadz.domain.repo.BlockedNumberRepository
 import com.talsk.amadz.ui.ongoingCall.CallActivity
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -67,19 +64,19 @@ class CallService : InCallService() {
         when {
             // Outgoing call → directly open CallActivity
             isOutgoing -> {
-                CallActivity.start(this, call.callPhone())
+                CallActivity.start(this, call.callerPhone())
             }
 
             // Incoming call → show full-screen intent notification
             isIncomingRinging -> {
-                if (blockedNumberRepository.isBlocked(call.callPhone())) {
+                if (blockedNumberRepository.isBlocked(call.callerPhone())) {
                     callStates[call] = Call.STATE_DISCONNECTED
                     callAdapter.dispatch(CallAction.Hangup)
                     return
                 }
                 scope.launch {
                     notificationController.playCallRingTone()
-                    notificationController.displayIncomingCallNotification(call.callPhone())
+                    notificationController.displayIncomingCallNotification(call.callerPhone())
                 }
             }
         }
@@ -97,7 +94,7 @@ class CallService : InCallService() {
             call.details.connectTimeMillis == 0L
         ) {
             scope.launch {
-                notificationController.showMissedCallNotification(call.callPhone())
+                notificationController.showMissedCallNotification(call.callerPhone())
             }
         }
     }
