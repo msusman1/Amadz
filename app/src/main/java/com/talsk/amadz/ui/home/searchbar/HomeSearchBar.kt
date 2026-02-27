@@ -156,10 +156,13 @@ fun HomeSearchBar(
                         modifier = Modifier.fillMaxWidth(),
                         phone = dialPadPhone,
                         onTapDown = { char ->
+                            vm.startTone(char)
                             dialPadPhone += char
                             vm.onSearchQueryChanged(dialPadPhone)
                         },
-                        onTapUp = {},
+                        onTapUp = {
+                            vm.stopTone()
+                        },
                         onBackSpaceClicked = {
                             dialPadPhone = dialPadPhone.dropLast(1)
                             vm.onSearchQueryChanged(dialPadPhone)

@@ -7,6 +7,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.talsk.amadz.data.ContactsSearchPagingSource
+import com.talsk.amadz.domain.DtmfToneGenerator
 import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.domain.repo.CallLogRepository
 import com.talsk.amadz.domain.repo.ContactRepository
@@ -25,6 +26,7 @@ import javax.inject.Inject
 class SearchViewModel @Inject constructor(
     private val contactRepository: ContactRepository,
     private val callLogRepository: CallLogRepository,
+    private val dtmfToneGenerator: DtmfToneGenerator
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -53,6 +55,14 @@ class SearchViewModel @Inject constructor(
 
     fun onSearchQueryChanged(query: String) {
         _query.value = query
+    }
+
+    fun startTone(char: Char) {
+        dtmfToneGenerator.startTone(char)
+    }
+
+    fun stopTone() {
+        dtmfToneGenerator.stopTone()
     }
 
 }
