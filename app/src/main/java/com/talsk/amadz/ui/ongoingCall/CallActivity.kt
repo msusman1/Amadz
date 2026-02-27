@@ -23,7 +23,6 @@ class CallActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         ProxyController(this, lifecycle)
         LockScreenController.enable(this)
-        App.needCallLogRefresh = true
         setContent {
             val uiState by vm.callState.collectAsStateWithLifecycle()
             val contactDetail by vm.contact.collectAsStateWithLifecycle()

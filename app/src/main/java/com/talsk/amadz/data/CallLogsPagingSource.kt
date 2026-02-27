@@ -36,12 +36,8 @@ class CallLogsPagingSource @Inject constructor(
     }
 
     override fun getRefreshKey(state: PagingState<Int, CallLogData>): Int? {
-        // Anchor position = most recently accessed index
-        val anchorPosition = state.anchorPosition ?: return null
-
-        val closestPage = state.closestPageToPosition(anchorPosition)
-
-        return closestPage?.prevKey?.plus(1)
-            ?: closestPage?.nextKey?.minus(1)
+        // For call logs we always want newest entries first after refresh.
+        // Returning FIRST_PAGE prevents refresh from reloading around a mid-list anchor.
+        return FIRST_PAGE
     }
 }

@@ -5,6 +5,7 @@ import android.os.PowerManager
 import android.telecom.Call
 import android.telecom.InCallService
 import android.util.Log
+import com.talsk.amadz.App
 import com.talsk.amadz.domain.CallAction
 import com.talsk.amadz.domain.CallAdapter
 import com.talsk.amadz.domain.CallAudioController
@@ -55,6 +56,7 @@ class CallService : InCallService() {
     override fun onCallAdded(call: Call) {
         Log.d(TAG, "onCallAdded() called with: call = $call")
         super.onCallAdded(call)
+        App.needCallLogRefresh = true
         callAdapter.bindCall(call)
         callStates[call] = call.state
 
