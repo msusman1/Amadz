@@ -1,7 +1,7 @@
 package com.talsk.amadz.ui.home.searchbar
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,73 +19,93 @@ import androidx.compose.material3.SearchBarDefaults.inputFieldColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.talsk.amadz.core.dial
 import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactItem
 import com.talsk.amadz.ui.components.LazyPagedColumn
+import com.talsk.amadz.ui.extensions.openContactDetailScreen
 import com.talsk.amadz.ui.home.HeaderItem
+import com.talsk.amadz.ui.home.KeyPad
 
+
+enum class SearchBarState {
+    COLLAPSED,
+    EXPANDED,
+    EXPANDED_WITH_DIAL_PAD;
+
+    fun isActive(): Boolean {
+        return this == EXPANDED || this == EXPANDED_WITH_DIAL_PAD
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeSearchBar(
-    searchActive: Boolean,
-    contacts: LazyPagingItems<Contact>,
-    query: String,
+    searchBarState: SearchBarState,
     onSearchBarClick: () -> Unit,
     onSearchCloseClick: () -> Unit,
-    onContactDetailClick: (Contact) -> Unit,
-    onCallClick: (Contact) -> Unit,
-    onQueryChanged: (String) -> Unit
+    vm: SearchViewModel = hiltViewModel()
 ) {
-    val padding by animateDpAsState(if (searchActive) 0.dp else 16.dp)
-
+    val context = LocalContext.current
+    val contacts = vm.contacts.collectAsLazyPagingItems()
+    val query by vm.query.collectAsStateWithLifecycle()
+    val padding by animateDpAsState(if (searchBarState == SearchBarState.COLLAPSED) 16.dp else 0.dp)
+    var dialPadPhone by rememberSaveable { mutableStateOf("") }
+    BackHandler(enabled = searchBarState.isActive()) {
+        onSearchCloseClick()
+    }
     SearchBar(
         inputField = {
-            SearchBarDefaults.InputField(
-                query = query,
-                onQueryChange = onQueryChanged,
-                onSearch = onQueryChanged,
-                expanded = searchActive,
-                onExpandedChange = {
-                    if (it) {
-                        onSearchBarClick()
-                    }
-                },
-                enabled = true,
-                placeholder = { Text("Search Contacts") },
-                leadingIcon = {
-                    if (searchActive) {
-                        IconButton(onClick = onSearchCloseClick) {
-                            Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Back")
+            if (searchBarState != SearchBarState.EXPANDED_WITH_DIAL_PAD) {
+                SearchBarDefaults.InputField(
+                    query = query,
+                    onQueryChange = vm::onSearchQueryChanged,
+                    onSearch = vm::onSearchQueryChanged,
+                    expanded = searchBarState.isActive(),
+                    onExpandedChange = { if (it) onSearchBarClick() },
+                    enabled = true,
+                    placeholder = { Text("Search Contacts") },
+                    leadingIcon = {
+                        if (searchBarState.isActive()) {
+                            IconButton(onClick = onSearchCloseClick) {
+                                Icon(
+                                    Icons.AutoMirrored.Default.ArrowBack,
+                                    contentDescription = "Back"
+                                )
+                            }
+                        } else {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
                         }
-                    } else {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    }
 
-                },
-                trailingIcon = {
-                    if (searchActive && query.isNotEmpty()) {
-                        IconButton(onClick = { onQueryChanged("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear")
+                    },
+                    trailingIcon = {
+                        if (searchBarState.isActive() && query.isNotEmpty()) {
+                            IconButton(onClick = { vm.onSearchQueryChanged("") }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear")
+                            }
                         }
-                    }
-                },
-                interactionSource = null,
-            )
+                    },
+                    interactionSource = null,
+                )
+            }
         },
-        expanded = searchActive,
+        expanded = searchBarState.isActive(),
         onExpandedChange = { },
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = padding),
-        shape = if (searchActive) RoundedCornerShape(0.dp) else SearchBarDefaults.inputFieldShape,
+        shape = if (searchBarState.isActive()) RoundedCornerShape(0.dp) else SearchBarDefaults.inputFieldShape,
         colors = SearchBarDefaults.colors(
             dividerColor = Color.Transparent,
             containerColor = MaterialTheme.colorScheme.background,
@@ -98,10 +118,37 @@ fun HomeSearchBar(
         content = {
             SearchResults(
                 filteredContacts = contacts,
-                onContactDetailClick = onContactDetailClick,
-                onCallClick = onCallClick
+                onContactDetailClick = { context.openContactDetailScreen(it.id) },
+                onCallClick = { context.dial(it.phone) }
             )
+            if (searchBarState == SearchBarState.EXPANDED_WITH_DIAL_PAD) {
+                KeyPad(
+                    modifier = Modifier.weight(1.0f),
+                    phone = dialPadPhone,
+                    onTapDown = { char ->
+                        dialPadPhone += char
+                        vm.onSearchQueryChanged(dialPadPhone)
+                    },
+                    onTapUp = {},
+                    onBackSpaceClicked = {
+                        dialPadPhone = dialPadPhone.dropLast(1)
+                        vm.onSearchQueryChanged(dialPadPhone)
+                    },
+                    onClearClicked = {
+                        dialPadPhone = ""
+                        vm.onSearchQueryChanged("")
+                    },
+                    onCallClicked = {
+                        if (dialPadPhone.isNotBlank()) {
+                            context.dial(dialPadPhone)
+                        }
+                    },
+                    showCallButton = true,
+                    showClearButton = true
+                )
+            }
         }
+
     )
 }
 
