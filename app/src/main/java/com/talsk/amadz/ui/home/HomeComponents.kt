@@ -17,8 +17,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -209,7 +209,10 @@ fun CallLogItem(
                     tint = if (logData.callLogType == CallLogType.MISSED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground,
                     contentDescription = null
                 )
-                Text(text = logData.time.toReadableFormat())
+                Text(
+                    text = logData.time.toReadableFormat(),
+                    color = if (logData.callLogType == CallLogType.MISSED) MaterialTheme.colorScheme.error else Color.Unspecified
+                )
                 if (logData.simSlot != null && logData.simSlot >= 0) {
                     Text(
                         text = "SIM ${logData.simSlot + 1}",

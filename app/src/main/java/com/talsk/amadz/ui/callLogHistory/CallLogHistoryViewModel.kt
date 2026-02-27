@@ -3,10 +3,11 @@ package com.talsk.amadz.ui.callLogHistory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.talsk.amadz.App
-import com.talsk.amadz.domain.entity.CallLogData
 import com.talsk.amadz.domain.repo.BlockedNumberRepository
 import com.talsk.amadz.domain.repo.CallLogRepository
 import com.talsk.amadz.domain.repo.ContactRepository
+import com.talsk.amadz.ui.home.calllogs.CallLogUiModel
+import com.talsk.amadz.util.startOfDay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,11 +36,23 @@ class CallLogHistoryViewModel @Inject constructor(
 
             val contact = contactRepository.getContactByPhone(phone)
             val logs = callLogRepository.getCallLogsByPhone(phone)
+
+            val groupedLogs = buildList {
+                var lastHeaderDayMillis: Long? = null
+                logs.forEach { log ->
+                    val day = log.time.startOfDay()
+                    if (lastHeaderDayMillis != day.time) {
+                        add(CallLogUiModel.Header(day))
+                        lastHeaderDayMillis = day.time
+                    }
+                    add(CallLogUiModel.Item(log))
+                }
+            }
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 title = contact?.name ?: cachedName.ifBlank { phone },
                 phone = contact?.phone ?: phone,
-                logs = logs,
+                logs = groupedLogs,
                 isBlocked = blockedNumberRepository.isBlocked(contact?.phone ?: phone),
                 isSavedContact = contact != null
             )
@@ -73,7 +86,7 @@ data class CallLogHistoryUiState(
     val isLoading: Boolean = true,
     val title: String = "",
     val phone: String = "",
-    val logs: List<CallLogData> = emptyList(),
+    val logs: List<CallLogUiModel> = emptyList(),
     val isBlocked: Boolean = false,
     val isSavedContact: Boolean = false
 )
