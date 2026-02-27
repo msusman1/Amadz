@@ -109,16 +109,29 @@ class ContactsRepositoryImpl @Inject constructor(
     override suspend fun searchContacts(query: String, limit: Int, offset: Int): List<Contact> =
         withContext(ioDispatcher) {
             if (query.isBlank()) return@withContext emptyList()
+
+            val normalizedQuery = query.trim()
             val selection =
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? OR ${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ? ".trimIndent()
-            val args = arrayOf("%$query%", "%$query%")
-            contentResolver.query(
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? OR ${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ?".trimIndent()
+            val args = arrayOf("%$normalizedQuery%", "%$normalizedQuery%")
+            val phoneAndNameMatches = contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 phoneProjection,
                 selection,
                 args,
                 "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC LIMIT $limit OFFSET $offset"
             )?.toContactRows() ?: emptyList()
+
+            val emailAndAddressMatchedIds = searchContactIdsByEmailOrAddress(
+                query = normalizedQuery,
+                limit = limit,
+                offset = offset
+            )
+            val emailAndAddressMatches = loadContactsByIds(emailAndAddressMatchedIds)
+
+            (phoneAndNameMatches + emailAndAddressMatches)
+                .distinctBy { contact -> "${contact.id}_${contact.phone}" }
+                .take(limit)
         }
 
     override suspend fun getContactByPhone(phoneNumber: String): Contact? =
@@ -138,26 +151,6 @@ class ContactsRepositoryImpl @Inject constructor(
                 if (cursor.moveToFirst()) cursor.toContactDataForPhoneLookup() else null
             }
         }
-
-    suspend fun getContactByPhoneOld(phoneNumber: String): Contact? = withContext(ioDispatcher) {
-        val normalizedPhone = normalizePhoneNumber(phoneNumber) ?: return@withContext null
-
-        val selection = """
-                REPLACE(REPLACE(REPLACE(${ContactsContract.CommonDataKinds.Phone.NUMBER},
-                ' ', ''), '-', ''), '(', '') LIKE ?
-            """.trimIndent()
-        val selectionArgs = arrayOf("%$normalizedPhone%")
-        ContactsContract.Contacts.CONTENT_URI
-        contentResolver.query(
-            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-            phoneProjection,
-            selection,
-            selectionArgs,
-            null
-        )?.use {
-            if (it.moveToFirst()) it.toContactData() else null
-        }
-    }
 
     override suspend fun getCompanyName(contactId: Long): String? = withContext(ioDispatcher) {
         val orgWhere =
@@ -273,6 +266,77 @@ class ContactsRepositoryImpl @Inject constructor(
             phone = contactNumber,
             image = photoUri,
         )
+    }
+
+    private fun searchContactIdsByEmailOrAddress(
+        query: String,
+        limit: Int,
+        offset: Int
+    ): List<Long> {
+        val mimetypeColumn = ContactsContract.Data.MIMETYPE
+        val selection = """
+            ($mimetypeColumn = ? AND ${ContactsContract.CommonDataKinds.Email.ADDRESS} LIKE ?)
+            OR
+            ($mimetypeColumn = ? AND ${ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS} LIKE ?)
+        """.trimIndent()
+        val args = arrayOf(
+            ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE,
+            "%$query%",
+            ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE,
+            "%$query%"
+        )
+
+        return contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            arrayOf(ContactsContract.Data.CONTACT_ID),
+            selection,
+            args,
+            "${ContactsContract.Data.DISPLAY_NAME} COLLATE NOCASE ASC LIMIT $limit OFFSET $offset"
+        )?.use { cursor ->
+            val contactIdIndex = cursor.getColumnIndexOrThrow(ContactsContract.Data.CONTACT_ID)
+            val ids = LinkedHashSet<Long>()
+            while (cursor.moveToNext()) {
+                ids.add(cursor.getLong(contactIdIndex))
+            }
+            ids.toList()
+        } ?: emptyList()
+    }
+
+    private fun loadContactsByIds(contactIds: List<Long>): List<Contact> {
+        if (contactIds.isEmpty()) return emptyList()
+
+        val placeholders = contactIds.joinToString(",") { "?" }
+        val selection = "${ContactsContract.Contacts._ID} IN ($placeholders) AND ${ContactsContract.Contacts.HAS_PHONE_NUMBER} > 0"
+        val args = contactIds.map { it.toString() }.toTypedArray()
+        val contacts = mutableListOf<Contact>()
+
+        contentResolver.query(
+            ContactsContract.Contacts.CONTENT_URI,
+            contactProjection,
+            selection,
+            args,
+            "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} COLLATE NOCASE ASC"
+        )?.use { cursor ->
+            val idIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts._ID)
+            val nameIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+            val photoIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_URI)
+
+            while (cursor.moveToNext()) {
+                contacts += Contact(
+                    id = cursor.getLong(idIndex),
+                    name = cursor.getString(nameIndex).orEmpty(),
+                    phone = "",
+                    image = cursor.getStringOrNull(photoIndex)?.toUri()
+                )
+            }
+        }
+
+        if (contacts.isEmpty()) return emptyList()
+        val phoneNumbers = loadPhoneNumbers(contacts.map { it.id })
+        return contacts.mapNotNull { contact ->
+            val phone = phoneNumbers[contact.id] ?: return@mapNotNull null
+            contact.copy(phone = phone)
+        }
     }
 
     private fun loadPhoneNumbers(contactIds: List<Long>): Map<Long, String> {
