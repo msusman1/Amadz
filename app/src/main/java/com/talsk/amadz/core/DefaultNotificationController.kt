@@ -61,7 +61,8 @@ class DefaultNotificationController @Inject constructor(
             content = contact.title,
             subText = contact.subtitle,
             largeIcon = contact.avatar,
-            priority = NotificationCompat.PRIORITY_MAX
+            priority = NotificationCompat.PRIORITY_MAX,
+            phone = phone
         ).apply {
             setAutoCancel(false)
             setOngoing(true)
@@ -87,7 +88,8 @@ class DefaultNotificationController @Inject constructor(
             content = contact.title,
             subText = contact.subtitle,
             largeIcon = contact.avatar,
-            priority = NotificationCompat.PRIORITY_HIGH
+            priority = NotificationCompat.PRIORITY_HIGH,
+            phone = phone
         ).apply {
             setAutoCancel(false)
             setOngoing(true)
@@ -110,7 +112,8 @@ class DefaultNotificationController @Inject constructor(
             content = contact.title,
             subText = contact.subtitle,
             largeIcon = contact.avatar,
-            priority = NotificationCompat.PRIORITY_LOW
+            priority = NotificationCompat.PRIORITY_LOW,
+            phone = phone
         ).apply {
             setAutoCancel(false)
             setOngoing(true)
@@ -182,7 +185,8 @@ class DefaultNotificationController @Inject constructor(
         content: String,
         subText: String?,
         largeIcon: Bitmap?,
-        priority: Int
+        priority: Int,
+        phone: String
     ): NotificationCompat.Builder {
         return NotificationCompat.Builder(context, CALL_CHANNEL_ID)
             .setSmallIcon(R.drawable.app_logo_short_notification)
@@ -193,7 +197,7 @@ class DefaultNotificationController @Inject constructor(
             .setOngoing(true)
             .setPriority(priority)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setContentIntent(callActivityIntent())
+            .setContentIntent(callActivityIntent(phone))
     }
 
     private fun callActivityIntent(phone: String? = null): PendingIntent {
@@ -201,9 +205,10 @@ class DefaultNotificationController @Inject constructor(
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION
             phone?.let { putExtra("phone", it) }
         }
+        val requestCode = phone?.hashCode() ?: 0
         return PendingIntent.getActivity(
             context,
-            0,
+            requestCode,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

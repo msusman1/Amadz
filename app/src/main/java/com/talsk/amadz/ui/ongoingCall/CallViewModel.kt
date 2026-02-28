@@ -29,12 +29,17 @@ class CallViewModel @Inject constructor(
     val contact: StateFlow<ContactWithCompanyName> =
         savedStateHandle.getStateFlow("phone", "")
             .mapLatest { number ->
-                val realContact = contactsRepository.getContactByPhone(number)
+                val normalizedNumber = number.trim()
+                if (normalizedNumber.isEmpty()) {
+                    return@mapLatest ContactWithCompanyName(Contact.unknown(""), "")
+                }
+
+                val realContact = contactsRepository.getContactByPhone(normalizedNumber)
                 if (realContact != null) {
                     val companyName = contactsRepository.getCompanyName(realContact.id)
                     ContactWithCompanyName(realContact, companyName)
                 } else {
-                    ContactWithCompanyName(Contact.unknown(number), "")
+                    ContactWithCompanyName(Contact.unknown(normalizedNumber), "")
                 }
             }.stateInScoped(ContactWithCompanyName(Contact.unknown(""), ""))
 

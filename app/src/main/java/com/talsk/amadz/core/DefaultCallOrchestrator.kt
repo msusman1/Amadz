@@ -38,13 +38,17 @@ class DefaultCallOrchestrator @Inject constructor(
 
     private val _callState = MutableStateFlow<CallState>(CallState.Idle)
     override val callState: StateFlow<CallState> = _callState.asStateFlow()
+
     private val scope = MainScope()
     private var currentCall: Call? = null
     private var timerJob: Job? = null
     private var callServiceAudioDelegate: CallServiceAudioDelegate? = null
 
-    private val telephonyManager = context.getSystemService(TelephonyManager::class.java)
+    private var currentCallInitialState: Int? = null
+    private var micMuted: Boolean = false
+    private var speakerOn: Boolean = false
 
+    private val telephonyManager = context.getSystemService(TelephonyManager::class.java)
 
     private fun checkSimState() {
         val simState = telephonyManager.simState
@@ -58,7 +62,7 @@ class DefaultCallOrchestrator @Inject constructor(
 
     private val telecomCallback = object : Callback() {
         override fun onStateChanged(call: Call, state: Int) {
-            Log.d(TAG, "onStateChanged: state:${state}}")
+            Log.d(TAG, "onStateChanged: state=$state")
             mapCallState(call, state)
         }
     }
@@ -68,29 +72,39 @@ class DefaultCallOrchestrator @Inject constructor(
             CallAction.Answer -> currentCall?.answer(VideoProfile.STATE_AUDIO_ONLY)
             CallAction.Hangup -> currentCall?.disconnect()
             is CallAction.Hold -> if (callAction.enabled) currentCall?.hold() else currentCall?.unhold()
-            is CallAction.Mute -> callServiceAudioDelegate?.setMicMuted(callAction.enabled)
-            is CallAction.Speaker -> callServiceAudioDelegate?.setSpeaker(callAction.enabled)
+            is CallAction.Mute -> {
+                micMuted = callAction.enabled
+                callServiceAudioDelegate?.setMicMuted(callAction.enabled)
+                _callState.update { state ->
+                    if (state is CallState.Active) state.copy(isMuted = callAction.enabled) else state
+                }
+            }
+
+            is CallAction.Speaker -> {
+                speakerOn = callAction.enabled
+                callServiceAudioDelegate?.setSpeaker(callAction.enabled)
+                _callState.update { state ->
+                    if (state is CallState.Active) state.copy(isSpeakerOn = callAction.enabled) else state
+                }
+            }
+
             is CallAction.StartDialTone -> currentCall?.playDtmfTone(callAction.char)
             CallAction.StopDialTone -> currentCall?.stopDtmfTone()
         }
     }
 
-
     override fun setCallServiceAudioDelegate(audioController: CallServiceAudioDelegate) {
         this.callServiceAudioDelegate = audioController
     }
 
-
     private fun mapCallState(call: Call, state: Int) {
-
-
         val phone = call.callerPhone()
         when (state) {
             Call.STATE_ACTIVE -> {
                 _callState.value = CallState.Active(
                     duration = 0,
-                    isMuted = false,
-                    isSpeakerOn = false,
+                    isMuted = micMuted,
+                    isSpeakerOn = speakerOn,
                     isOnHold = false
                 )
                 startTimer()
@@ -103,7 +117,6 @@ class DefaultCallOrchestrator @Inject constructor(
 
             Call.STATE_DIALING -> {
                 _callState.value = CallState.Ringing(CallDirection.OUTGOING)
-                callUiEffects.showOutgoing(call.callerPhone())
             }
 
             Call.STATE_RINGING -> {
@@ -123,16 +136,11 @@ class DefaultCallOrchestrator @Inject constructor(
         }
     }
 
-
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = scope.launch {
             while (isActive) {
                 delay(1_000)
-                val newDuration = ((_callState.value as? CallState.Active)?.duration ?: 0) + 1
-                currentCall?.callerPhone()?.let {
-                    callUiEffects.showOngoing(it, newDuration)
-                }
                 _callState.update {
                     if (it is CallState.Active) {
                         it.copy(duration = it.duration + 1)
@@ -144,15 +152,18 @@ class DefaultCallOrchestrator @Inject constructor(
         }
     }
 
-
     override fun onCallAdded(call: Call) {
         Log.d(TAG, "onCallAdded: $call")
         checkSimState()
         App.needCallLogRefresh = true
+
         currentCall?.unregisterCallback(telecomCallback)
-        mapCallState(call, call.stateCompat)
+
         currentCall = call
-        currentCall?.registerCallback(telecomCallback)
+        currentCallInitialState = call.stateCompat
+        mapCallState(call, call.stateCompat)
+        call.registerCallback(telecomCallback)
+
         val isOutgoing =
             call.stateCompat == Call.STATE_CONNECTING || call.stateCompat == Call.STATE_DIALING
         val isIncomingRinging = call.stateCompat == Call.STATE_RINGING && !isOutgoing
@@ -180,14 +191,29 @@ class DefaultCallOrchestrator @Inject constructor(
         Log.d(TAG, "onCallRemoved: $call")
         currentCall?.unregisterCallback(telecomCallback)
         callUiEffects.stopCallUi()
+
+        val wasIncomingRingingAtStart = currentCallInitialState == Call.STATE_RINGING
+        val wasNeverConnected = call.details.connectTimeMillis == 0L
+        val isDisconnected = call.stateCompat == Call.STATE_DISCONNECTED
+        if (wasIncomingRingingAtStart && wasNeverConnected && isDisconnected) {
+            scope.launch {
+                callUiEffects.showMissedCall(call.callerPhone())
+            }
+        }
+
         currentCall = null
+        currentCallInitialState = null
         timerJob?.cancel()
         timerJob = null
     }
 
     override fun onDestroy() {
         callUiEffects.stopCallUi()
-        this.callServiceAudioDelegate = null
+        callServiceAudioDelegate = null
+        currentCall = null
+        currentCallInitialState = null
+        timerJob?.cancel()
+        timerJob = null
         scope.cancel()
     }
 }
