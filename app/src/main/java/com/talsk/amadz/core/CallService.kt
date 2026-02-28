@@ -1,107 +1,54 @@
 package com.talsk.amadz.core
 
 import android.telecom.Call
+import android.telecom.CallAudioState
 import android.telecom.InCallService
 import android.util.Log
-import com.talsk.amadz.App
-import com.talsk.amadz.domain.CallAction
-import com.talsk.amadz.domain.CallAdapter
-import com.talsk.amadz.domain.CallAudioController
-import com.talsk.amadz.domain.NotificationController
-import com.talsk.amadz.domain.RingToneController
-import com.talsk.amadz.domain.repo.BlockedNumberRepository
-import com.talsk.amadz.ui.ongoingCall.CallActivity
+import com.talsk.amadz.domain.CallServiceAudioDelegate
+import com.talsk.amadz.domain.CallOrchestrator
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-
-/**
- * Created by Muhammad Usman : msusman97@gmail.com on 11/172023.
- */
 
 private const val TAG = "CallService"
 
 @AndroidEntryPoint
-class CallService : InCallService() {
-
+class CallService : InCallService(), CallServiceAudioDelegate {
     @Inject
-    lateinit var callAdapter: CallAdapter
+    lateinit var callOrchestrator: CallOrchestrator
 
-    @Inject
-    lateinit var notificationController: NotificationController
-
-    @Inject
-    lateinit var ringToneController: RingToneController
-
-    @Inject
-    lateinit var blockedNumberRepository: BlockedNumberRepository
-
-    private val scope = MainScope()
-    private lateinit var audioController: CallAudioController
 
     override fun onCreate() {
-        Log.d(TAG, "onCreate: ")
+        Log.d(TAG, "onCreate")
         super.onCreate()
-        audioController = TelecomAudioController(this)
-        callAdapter.attachAudioController(audioController)
+        callOrchestrator.setCallServiceAudioDelegate(this)
     }
-
 
     override fun onCallAdded(call: Call) {
-        Log.d(TAG, "onCallAdded() called with: call = $call")
         super.onCallAdded(call)
-        App.needCallLogRefresh = true
-        callAdapter.bindCall(call)
-        callStates[call] = call.state
-
-        val isOutgoing = call.state == Call.STATE_CONNECTING || call.state == Call.STATE_DIALING
-        val isIncomingRinging = call.state == Call.STATE_RINGING && !isOutgoing
-
-        when {
-            // Outgoing call → directly open CallActivity
-            isOutgoing -> {
-                CallActivity.start(this, call.callerPhone())
-            }
-
-            // Incoming call → show full-screen intent notification
-            isIncomingRinging -> {
-                if (blockedNumberRepository.isBlocked(call.callerPhone())) {
-                    callStates[call] = Call.STATE_DISCONNECTED
-                    callAdapter.dispatch(CallAction.Hangup)
-                    return
-                }
-                scope.launch {
-                    ringToneController.playCallRingTone()
-                    notificationController.displayIncomingCallNotification(call.callerPhone())
-                }
-            }
-        }
+        callOrchestrator.onCallAdded(call)
     }
 
-    private val callStates = mutableMapOf<Call, Int>()
     override fun onCallRemoved(call: Call) {
-        Log.d(TAG, "onCallRemoved: $call")
         super.onCallRemoved(call)
-        callAdapter.unBindCall(call)
-        val previousState = callStates.remove(call)
-
-        if (previousState == Call.STATE_RINGING &&
-            call.state == Call.STATE_DISCONNECTED &&
-            call.details.connectTimeMillis == 0L
-        ) {
-            scope.launch {
-                notificationController.showMissedCallNotification(call.callerPhone())
-            }
-        }
+        callOrchestrator.onCallRemoved(call)
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "onDestroy: ")
-        scope.cancel()
-        callAdapter.detachAudioController()
+        Log.d(TAG, "onDestroy")
+        callOrchestrator.onDestroy()
         super.onDestroy()
+    }
+
+    override fun setMicMuted(muted: Boolean) {
+        this.setMuted(muted)
+    }
+
+    override fun setSpeaker(enabled: Boolean) {
+        val route = if (enabled) {
+            CallAudioState.ROUTE_SPEAKER
+        } else {
+            CallAudioState.ROUTE_EARPIECE
+        }
+        this.setAudioRoute(route)
     }
 }

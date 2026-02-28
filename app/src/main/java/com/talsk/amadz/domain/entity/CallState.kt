@@ -11,7 +11,7 @@ sealed class CallState {
     object Connecting : CallState()
 
     data class Active(
-        val duration: Long,
+        val duration: Int,
         val isMuted: Boolean,
         val isSpeakerOn: Boolean,
         val isOnHold: Boolean

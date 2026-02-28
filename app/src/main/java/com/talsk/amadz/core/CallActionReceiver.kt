@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.talsk.amadz.domain.CallAction
-import com.talsk.amadz.domain.CallAdapter
+import com.talsk.amadz.domain.CallOrchestrator
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -12,12 +12,12 @@ import javax.inject.Inject
 class CallActionReceiver : BroadcastReceiver() {
 
     @Inject
-    lateinit var callAdapter: CallAdapter
+    lateinit var callOrchestrator: CallOrchestrator
 
     override fun onReceive(context: Context, intent: Intent?) {
         when (intent?.action) {
-            ACTION_ACCEPT -> callAdapter.dispatch(CallAction.Answer)
-            ACTION_DECLINE -> callAdapter.dispatch(CallAction.Hangup)
+            ACTION_ACCEPT -> callOrchestrator.onAction(CallAction.Answer)
+            ACTION_DECLINE -> callOrchestrator.onAction(CallAction.Hangup)
         }
     }
 

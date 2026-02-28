@@ -198,7 +198,7 @@ fun CallHeader(
         Spacer(modifier = Modifier.height(12.dp))
         if (uiState is CallState.Active) {
             Text(
-                text = secondsToReadableTime(uiState.duration.toInt()),
+                text = secondsToReadableTime(uiState.duration),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold
             )

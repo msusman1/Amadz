@@ -2,7 +2,9 @@ package com.talsk.amadz.di
 
 import com.talsk.amadz.data.ContactPhotoProviderImpl
 import com.talsk.amadz.data.BlockedNumberRepositoryImpl
-import com.talsk.amadz.core.DefaultCallAdapter
+import com.talsk.amadz.core.CallUiEffects
+import com.talsk.amadz.core.CallUiEffectsHandler
+import com.talsk.amadz.core.DefaultCallOrchestrator
 import com.talsk.amadz.core.DefaultDtmfToneGenerator
 import com.talsk.amadz.core.DefaultNotificationController
 import com.talsk.amadz.data.SimInfoProviderImpl
@@ -10,7 +12,7 @@ import com.talsk.amadz.data.CallLogRepositoryImpl
 import com.talsk.amadz.data.ContactDetailProviderImpl
 import com.talsk.amadz.data.ContactsRepositoryImpl
 import com.talsk.amadz.data.DefaultRingToneController
-import com.talsk.amadz.domain.CallAdapter
+import com.talsk.amadz.domain.CallOrchestrator
 import com.talsk.amadz.domain.DtmfToneGenerator
 import com.talsk.amadz.domain.NotificationController
 import com.talsk.amadz.domain.RingToneController
@@ -42,11 +44,18 @@ abstract class RepoModule {
         notificationController: DefaultNotificationController
     ): NotificationController
 
+
     @Binds
     @Singleton
-    abstract fun bindCallAdapter(
-        callAdapter: DefaultCallAdapter
-    ): CallAdapter
+    abstract fun bindCallOrchestrator(
+        callOrchestrator: DefaultCallOrchestrator
+    ): CallOrchestrator
+
+    @Binds
+    @Singleton
+    abstract fun bindCallUiEffects(
+        impl: CallUiEffectsHandler
+    ): CallUiEffects
 
     @Binds
     abstract fun bindCallLogRepo(

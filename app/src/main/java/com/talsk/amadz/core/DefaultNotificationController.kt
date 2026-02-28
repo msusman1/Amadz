@@ -24,8 +24,6 @@ import javax.inject.Inject
 private const val CALL_CHANNEL_ID = "AMADZ_CALL_NOTIFICATION_ID"
 private const val CALL_CHANNEL_NAME = "AMADZ_CALL_NOTIFICATION"
 
-private const val INCOMING_CALL_NOTIFICATION_ID = 123
-private const val ONGOING_CALL_NOTIFICATION_ID = 124
 private const val MISSED_CALL_NOTIFICATION_ID = 125
 
 data class ContactUi(
@@ -128,16 +126,6 @@ class DefaultNotificationController @Inject constructor(
     }
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    override suspend fun displayIncomingCallNotification(phone: String) {
-        notificationManager.notify(INCOMING_CALL_NOTIFICATION_ID, buildIncomingCallNotification(phone))
-    }
-
-    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    override suspend fun displayOngoingCallNotification(phone: String) {
-        notificationManager.notify(ONGOING_CALL_NOTIFICATION_ID, buildOngoingCallNotification(phone, 0))
-    }
-
-    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override suspend fun showMissedCallNotification(phone: String) {
         val contact = loadContactUi(phone)
 
@@ -152,16 +140,6 @@ class DefaultNotificationController @Inject constructor(
 
         notificationManager.notify(MISSED_CALL_NOTIFICATION_ID, builder.build())
     }
-
-    override fun cancelIncomingCallNotification() {
-        notificationManager.cancel(INCOMING_CALL_NOTIFICATION_ID)
-    }
-
-    override fun cancelOngoingCallNotification() {
-        notificationManager.cancel(ONGOING_CALL_NOTIFICATION_ID)
-    }
-
-
 
     // ----------------------------
     // Internal Helpers

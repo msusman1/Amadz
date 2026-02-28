@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.domain.CallAction
-import com.talsk.amadz.domain.CallAdapter
+import com.talsk.amadz.domain.CallOrchestrator
 import com.talsk.amadz.domain.repo.ContactRepository
 import com.talsk.amadz.ui.extensions.stateInScoped
 import com.talsk.amadz.domain.entity.CallState
@@ -22,7 +22,7 @@ import javax.inject.Inject
 class CallViewModel @Inject constructor(
     private val contactsRepository: ContactRepository,
     private val savedStateHandle: SavedStateHandle,
-    private val callAdapter: CallAdapter
+    private val callOrchestrator: CallOrchestrator
 ) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -38,10 +38,10 @@ class CallViewModel @Inject constructor(
                 }
             }.stateInScoped(ContactWithCompanyName(Contact.unknown(""), ""))
 
-    val callState: StateFlow<CallState> = callAdapter.callState
+    val callState: StateFlow<CallState> = callOrchestrator.callState
 
     fun onAction(action: CallAction) {
-        callAdapter.dispatch(action)
+        callOrchestrator.onAction(action)
     }
 
 }

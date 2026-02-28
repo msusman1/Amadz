@@ -11,6 +11,7 @@ import android.telecom.Call
 import android.telecom.PhoneAccountHandle
 import android.telecom.TelecomManager
 import android.telephony.SubscriptionManager
+import android.telephony.TelephonyManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.getSystemService
 import java.net.URLDecoder
@@ -69,3 +70,22 @@ fun Context.dial(phone: String, accountId: String? = null) {
     telecomManager?.placeCall(uri, extras)
 
 }
+
+
+fun Int.toSimStateReadable(): String {
+    return when (this) {
+        TelephonyManager.SIM_STATE_ABSENT -> "No Sim available"
+        TelephonyManager.SIM_STATE_CARD_IO_ERROR -> "Card Io error"
+        TelephonyManager.SIM_STATE_CARD_RESTRICTED -> "Sim card restricted"
+        TelephonyManager.SIM_STATE_NETWORK_LOCKED -> "Network locked"
+        TelephonyManager.SIM_STATE_NOT_READY -> "Sim not ready"
+        TelephonyManager.SIM_STATE_PERM_DISABLED -> "PERM disabled"
+        TelephonyManager.SIM_STATE_PIN_REQUIRED -> "PIN Required"
+        TelephonyManager.SIM_STATE_PUK_REQUIRED -> "PUK Required"
+        TelephonyManager.SIM_STATE_READY -> "Sim is ready"
+        else -> "Unknown"
+    }
+}
+
+val Call.stateCompat: Int
+    get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) this.details.state else this.state
