@@ -10,6 +10,7 @@ import com.talsk.amadz.domain.CallAction
 import com.talsk.amadz.domain.CallAdapter
 import com.talsk.amadz.domain.CallAudioController
 import com.talsk.amadz.domain.NotificationController
+import com.talsk.amadz.domain.RingToneController
 import com.talsk.amadz.domain.entity.CallDirection
 import com.talsk.amadz.domain.entity.CallState
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -43,6 +44,7 @@ fun Int.toSimStateReadable(): String {
 
 class DefaultCallAdapter @Inject constructor(
     private val notificationController: NotificationController,
+    private val ringToneController: RingToneController,
     @ApplicationContext context: Context,
 ) : CallAdapter {
     val TAG = "DefaultCallAdapter"
@@ -135,7 +137,7 @@ class DefaultCallAdapter @Inject constructor(
         if (state == Call.STATE_DISCONNECTED) {
             notificationController.cancelOngoingCallNotification()
             notificationController.cancelIncomingCallNotification()
-            notificationController.stepCallRingTone()
+            ringToneController.stepCallRingTone()
         }
 
         when (state) {
@@ -144,7 +146,7 @@ class DefaultCallAdapter @Inject constructor(
                     0, isMuted = false, isSpeakerOn = false, isOnHold = false
                 )
                 startTimer()
-                notificationController.stepCallRingTone()
+                ringToneController.stepCallRingTone()
             }
 
 
@@ -166,7 +168,7 @@ class DefaultCallAdapter @Inject constructor(
 
             Call.STATE_DISCONNECTED -> {
                 _callState.value = CallState.CallDisconnected
-                notificationController.stepCallRingTone()
+                ringToneController.stepCallRingTone()
                 timerJob?.cancel()
                 timerJob = null
             }
