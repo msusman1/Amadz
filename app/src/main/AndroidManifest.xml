@@ -87,6 +87,10 @@
                 <action android:name="android.telecom.InCallService" />
             </intent-filter>
         </service>
+
+        <receiver
+            android:name=".core.CallActionReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

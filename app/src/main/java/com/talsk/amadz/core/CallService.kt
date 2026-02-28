@@ -1,7 +1,5 @@
 package com.talsk.amadz.core
 
-import android.app.KeyguardManager
-import android.os.PowerManager
 import android.telecom.Call
 import android.telecom.InCallService
 import android.util.Log
@@ -10,6 +8,7 @@ import com.talsk.amadz.domain.CallAction
 import com.talsk.amadz.domain.CallAdapter
 import com.talsk.amadz.domain.CallAudioController
 import com.talsk.amadz.domain.NotificationController
+import com.talsk.amadz.domain.RingToneController
 import com.talsk.amadz.domain.repo.BlockedNumberRepository
 import com.talsk.amadz.ui.ongoingCall.CallActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -23,10 +22,10 @@ import javax.inject.Inject
  * Created by Muhammad Usman : msusman97@gmail.com on 11/172023.
  */
 
+private const val TAG = "CallService"
 
 @AndroidEntryPoint
 class CallService : InCallService() {
-    val TAG = "CallService"
 
     @Inject
     lateinit var callAdapter: CallAdapter
@@ -35,21 +34,19 @@ class CallService : InCallService() {
     lateinit var notificationController: NotificationController
 
     @Inject
+    lateinit var ringToneController: RingToneController
+
+    @Inject
     lateinit var blockedNumberRepository: BlockedNumberRepository
 
-    lateinit var powerManager: PowerManager
-    lateinit var keyguardManager: KeyguardManager
     private val scope = MainScope()
     private lateinit var audioController: CallAudioController
 
     override fun onCreate() {
         Log.d(TAG, "onCreate: ")
         super.onCreate()
-        powerManager = this.getSystemService(PowerManager::class.java)
-        keyguardManager = this.getSystemService(KeyguardManager::class.java)
         audioController = TelecomAudioController(this)
         callAdapter.attachAudioController(audioController)
-
     }
 
 
@@ -77,7 +74,7 @@ class CallService : InCallService() {
                     return
                 }
                 scope.launch {
-                    notificationController.playCallRingTone()
+                    ringToneController.playCallRingTone()
                     notificationController.displayIncomingCallNotification(call.callerPhone())
                 }
             }

@@ -9,9 +9,11 @@ import com.talsk.amadz.data.SimInfoProviderImpl
 import com.talsk.amadz.data.CallLogRepositoryImpl
 import com.talsk.amadz.data.ContactDetailProviderImpl
 import com.talsk.amadz.data.ContactsRepositoryImpl
+import com.talsk.amadz.data.DefaultRingToneController
 import com.talsk.amadz.domain.CallAdapter
 import com.talsk.amadz.domain.DtmfToneGenerator
 import com.talsk.amadz.domain.NotificationController
+import com.talsk.amadz.domain.RingToneController
 import com.talsk.amadz.domain.repo.SimInfoProvider
 import com.talsk.amadz.domain.repo.BlockedNumberRepository
 import com.talsk.amadz.domain.repo.CallLogRepository
@@ -27,6 +29,12 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepoModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindRingtoneController(
+        defaultRingToneController: DefaultRingToneController
+    ): RingToneController
 
     @Binds
     @Singleton
