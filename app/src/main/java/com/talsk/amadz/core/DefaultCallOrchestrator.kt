@@ -232,12 +232,10 @@ class DefaultCallOrchestrator @Inject constructor(
                 callUiEffects.showMissedCall(call.callerPhone())
                 cancelSessionScope()
                 resetSessionState()
-                _callState.value = CallState.Idle
             }
         } else {
             cancelSessionScope()
             resetSessionState()
-            _callState.value = CallState.Idle
         }
     }
 

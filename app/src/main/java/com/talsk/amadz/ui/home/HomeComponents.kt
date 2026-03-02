@@ -182,6 +182,7 @@ fun CallLogItem(
             CallLogType.MISSED -> R.drawable.baseline_call_missed_24
             CallLogType.INCOMING -> R.drawable.baseline_call_received_24
             CallLogType.OUTGOING -> R.drawable.baseline_call_made_24
+            CallLogType.REJECTED -> R.drawable.baseline_call_missed_24
         }
     }
     ListItem(
@@ -206,12 +207,12 @@ fun CallLogItem(
                         .size(18.dp)
                         .padding(end = 4.dp),
                     painter = painterResource(id = getCallIcon()),
-                    tint = if (logData.callLogType == CallLogType.MISSED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground,
+                    tint = if (logData.callLogType == CallLogType.MISSED || logData.callLogType == CallLogType.REJECTED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground,
                     contentDescription = null
                 )
                 Text(
                     text = logData.time.toReadableFormat(),
-                    color = if (logData.callLogType == CallLogType.MISSED) MaterialTheme.colorScheme.error else Color.Unspecified
+                    color = if (logData.callLogType == CallLogType.MISSED || logData.callLogType == CallLogType.REJECTED) MaterialTheme.colorScheme.error else Color.Unspecified
                 )
                 if (logData.simSlot != null && logData.simSlot >= 0) {
                     Text(

@@ -50,7 +50,9 @@ data class CallLogData(
 enum class CallLogType {
     INCOMING,
     OUTGOING,
-    MISSED, ;
+    MISSED,
+    REJECTED,
+    ;
 
     companion object {
 
@@ -59,6 +61,7 @@ enum class CallLogType {
                 CallLog.Calls.INCOMING_TYPE -> INCOMING
                 CallLog.Calls.OUTGOING_TYPE -> OUTGOING
                 CallLog.Calls.MISSED_TYPE -> MISSED
+                CallLog.Calls.REJECTED_TYPE -> REJECTED
                 else -> INCOMING
             }
 

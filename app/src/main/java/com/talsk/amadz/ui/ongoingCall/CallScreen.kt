@@ -1,6 +1,7 @@
 package com.talsk.amadz.ui.ongoingCall
 
 import android.telephony.TelephonyManager
+import android.util.Log
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -46,6 +47,7 @@ import com.talsk.amadz.ui.components.SimErrorDialog
 import com.talsk.amadz.ui.theme.green
 import com.talsk.amadz.ui.theme.red
 import com.talsk.amadz.util.secondsToReadableTime
+import kotlin.math.log
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/17/2023.
@@ -82,6 +84,7 @@ fun CallScreen(
 
     var keyboardOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(uiState) {
+        Log.d("CallScreen", "uiState: $uiState")
         if (uiState == CallState.CallDisconnected) {
             onFinish()
         }

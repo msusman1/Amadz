@@ -11,7 +11,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -121,6 +123,16 @@ private fun CallLogHistoryScreenInternal(
                         DropdownMenuItem(
                             text = {
                                 Text(if (state.isBlocked) "Unblock number" else "Block number")
+
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (state.isBlocked)
+                                        Icons.Default.LockOpen
+                                    else
+                                        Icons.Default.Block,
+                                    contentDescription = null
+                                )
                             },
                             onClick = {
                                 menuExpanded = false
@@ -199,7 +211,7 @@ private fun CallLogHistoryItem(log: CallLogData) {
         leadingContent = {
             Icon(
                 painter = painterResource(id = log.callTypeIconRes()),
-                tint = if (log.callLogType == CallLogType.MISSED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground,
+                tint = if (log.callLogType == CallLogType.MISSED || log.callLogType == CallLogType.REJECTED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground,
                 contentDescription = null
             )
         },
@@ -209,11 +221,11 @@ private fun CallLogHistoryItem(log: CallLogData) {
         supportingContent = {
             Text(
                 text = log.time.toReadableFormat(),
-                color = if (log.callLogType == CallLogType.MISSED) MaterialTheme.colorScheme.error else Color.Unspecified
+                color = if (log.callLogType == CallLogType.MISSED || log.callLogType == CallLogType.REJECTED) MaterialTheme.colorScheme.error else Color.Unspecified
             )
         },
         trailingContent = {
-            if (log.callLogType != CallLogType.MISSED) {
+            if (log.callLogType == CallLogType.OUTGOING || log.callLogType == CallLogType.INCOMING) {
                 Text(text = log.callDurationReadable())
             }
         }
@@ -224,10 +236,12 @@ private fun CallLogData.callTypeIconRes(): Int = when (callLogType) {
     CallLogType.MISSED -> R.drawable.baseline_call_missed_24
     CallLogType.INCOMING -> R.drawable.baseline_call_received_24
     CallLogType.OUTGOING -> R.drawable.baseline_call_made_24
+    CallLogType.REJECTED -> R.drawable.baseline_call_missed_24
 }
 
 private fun CallLogData.callTypeReadable(): String = when (callLogType) {
     CallLogType.MISSED -> "Missed Call"
     CallLogType.INCOMING -> "Incoming Call"
     CallLogType.OUTGOING -> "Outgoing Call"
+    CallLogType.REJECTED -> "Declined Call"
 }
