@@ -21,8 +21,10 @@ import com.talsk.amadz.ui.ongoingCall.CallActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
-private const val CALL_CHANNEL_ID = "AMADZ_CALL_NOTIFICATION_ID"
-private const val CALL_CHANNEL_NAME = "AMADZ_CALL_NOTIFICATION"
+private const val INCOMING_CALL_CHANNEL_ID = "AMADZ_INCOMING_CALL_NOTIFICATION_ID"
+private const val INCOMING_CALL_CHANNEL_NAME = "AMADZ_INCOMING_CALL_NOTIFICATION"
+private const val ONGOING_CALL_CHANNEL_ID = "AMADZ_ONGOING_CALL_NOTIFICATION_ID"
+private const val ONGOING_CALL_CHANNEL_NAME = "AMADZ_ONGOING_CALL_NOTIFICATION"
 
 private const val MISSED_CALL_NOTIFICATION_ID = 125
 
@@ -62,7 +64,8 @@ class DefaultNotificationController @Inject constructor(
             subText = contact.subtitle,
             largeIcon = contact.avatar,
             priority = NotificationCompat.PRIORITY_MAX,
-            phone = phone
+            phone = phone,
+            channelId = INCOMING_CALL_CHANNEL_ID
         ).apply {
             setAutoCancel(false)
             setOngoing(true)
@@ -88,12 +91,15 @@ class DefaultNotificationController @Inject constructor(
             content = contact.title,
             subText = contact.subtitle,
             largeIcon = contact.avatar,
-            priority = NotificationCompat.PRIORITY_HIGH,
-            phone = phone
+            priority = NotificationCompat.PRIORITY_LOW,
+            phone = phone,
+            channelId = ONGOING_CALL_CHANNEL_ID
         ).apply {
             setAutoCancel(false)
             setOngoing(true)
-            setCategory(NotificationCompat.CATEGORY_CALL)
+            setOnlyAlertOnce(true)
+            setCategory(NotificationCompat.CATEGORY_SERVICE)
+            setSilent(true)
             addAction(
                 R.drawable.outline_clear_24,
                 "Hang up",
@@ -113,11 +119,14 @@ class DefaultNotificationController @Inject constructor(
             subText = contact.subtitle,
             largeIcon = contact.avatar,
             priority = NotificationCompat.PRIORITY_LOW,
-            phone = phone
+            phone = phone,
+            channelId = ONGOING_CALL_CHANNEL_ID
         ).apply {
             setAutoCancel(false)
             setOngoing(true)
-            setCategory(NotificationCompat.CATEGORY_CALL)
+            setOnlyAlertOnce(true)
+            setCategory(NotificationCompat.CATEGORY_SERVICE)
+            setSilent(true)
             setUsesChronometer(true)
             setWhen(System.currentTimeMillis() - durationSeconds * 1000L)
             addAction(
@@ -132,7 +141,7 @@ class DefaultNotificationController @Inject constructor(
     override suspend fun showMissedCallNotification(phone: String) {
         val contact = loadContactUi(phone)
 
-        val builder = NotificationCompat.Builder(context, CALL_CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, INCOMING_CALL_CHANNEL_ID)
             .setSmallIcon(R.drawable.app_logo_short_notification)
             .setContentTitle("Missed Call")
             .setContentText(contact.title)
@@ -149,14 +158,27 @@ class DefaultNotificationController @Inject constructor(
     // ----------------------------
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CALL_CHANNEL_ID,
-            CALL_CHANNEL_NAME,
+        val incomingChannel = NotificationChannel(
+            INCOMING_CALL_CHANNEL_ID,
+            INCOMING_CALL_CHANNEL_NAME,
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Amadz Call Notifications"
+            description = "Amadz Incoming Call Notifications"
         }
-        notificationManager.createNotificationChannel(channel)
+
+        val ongoingChannel = NotificationChannel(
+            ONGOING_CALL_CHANNEL_ID,
+            ONGOING_CALL_CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Amadz Ongoing and Outgoing Call Notifications"
+            setSound(null, null)
+            enableVibration(false)
+            vibrationPattern = longArrayOf(0L)
+        }
+
+        notificationManager.createNotificationChannel(incomingChannel)
+        notificationManager.createNotificationChannel(ongoingChannel)
     }
 
     private suspend fun loadContactUi(phone: String): ContactUi {
@@ -186,9 +208,10 @@ class DefaultNotificationController @Inject constructor(
         subText: String?,
         largeIcon: Bitmap?,
         priority: Int,
-        phone: String
+        phone: String,
+        channelId: String
     ): NotificationCompat.Builder {
-        return NotificationCompat.Builder(context, CALL_CHANNEL_ID)
+        return NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.app_logo_short_notification)
             .setContentTitle(title)
             .setContentText(content)
