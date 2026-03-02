@@ -1,6 +1,7 @@
 package com.talsk.amadz.data
 
 import android.content.ContentResolver
+import android.content.ContentValues
 import android.content.Context
 import android.database.ContentObserver
 import android.database.Cursor
@@ -195,6 +196,18 @@ class ContactsRepositoryImpl @Inject constructor(
      * Get all favourite contacts as ContactData list
      */
 
+
+    override suspend fun removeFromFavourites(contactId: Long): Unit = withContext(ioDispatcher) {
+        val values = ContentValues().apply {
+            put(ContactsContract.Contacts.STARRED, 0)
+        }
+        contentResolver.update(
+            ContactsContract.Contacts.CONTENT_URI,
+            values,
+            "${ContactsContract.Contacts._ID} = ?",
+            arrayOf(contactId.toString())
+        )
+    }
 
     override fun observeFavourites(): Flow<List<Contact>> = callbackFlow {
 

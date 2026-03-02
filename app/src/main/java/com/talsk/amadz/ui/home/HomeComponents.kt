@@ -1,6 +1,8 @@
 package com.talsk.amadz.ui.home
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +17,12 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -113,7 +121,8 @@ fun EmptyContactItem() {
 fun FavouriteItemGroup(
     contacts: List<Contact>,
     onCallClick: (Contact) -> Unit,
-    onContactDetailClick: (Contact) -> Unit
+    onContactDetailClick: (Contact) -> Unit,
+    onRemoveFromFavouriteClick: (Contact) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -124,15 +133,15 @@ fun FavouriteItemGroup(
         val second = contacts.getOrNull(1)
         val third = contacts.getOrNull(2)
         if (first != null) {
-            FavouriteItem(first, onCallClick, onContactDetailClick)
+            FavouriteItem(first, onCallClick, onContactDetailClick, onRemoveFromFavouriteClick)
         }
         if (second != null) {
-            FavouriteItem(second, onCallClick, onContactDetailClick)
+            FavouriteItem(second, onCallClick, onContactDetailClick, onRemoveFromFavouriteClick)
         } else {
             Spacer(modifier = Modifier.size(96.dp))
         }
         if (third != null) {
-            FavouriteItem(third, onCallClick, onContactDetailClick)
+            FavouriteItem(third, onCallClick, onContactDetailClick, onRemoveFromFavouriteClick)
         } else {
             Spacer(modifier = Modifier.size(96.dp))
         }
@@ -141,21 +150,27 @@ fun FavouriteItemGroup(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun FavouriteItem(
     contact: Contact,
     onCallClick: (Contact) -> Unit,
-    onContactDetailClick: (Contact) -> Unit
+    onContactDetailClick: (Contact) -> Unit,
+    onRemoveFromFavouriteClick: (Contact) -> Unit
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .padding(vertical = 16.dp, horizontal = 8.dp)
-            .clickable { onCallClick(contact) }) {
+            .combinedClickable(
+                onClick = { onCallClick(contact) },
+                onLongClick = { menuExpanded = true }
+            )) {
         Spacer(modifier = Modifier.height(12.dp))
         ContactAvatar(
             modifier = Modifier.size(96.dp),
-            contact = contact,
-            onClick = { onContactDetailClick(contact) }
+            contact = contact
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -165,6 +180,25 @@ fun FavouriteItem(
             style = MaterialTheme.typography.bodyMedium
         )
         Spacer(modifier = Modifier.height(12.dp))
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Contact detail") },
+                onClick = {
+                    menuExpanded = false
+                    onContactDetailClick(contact)
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Remove from fav") },
+                onClick = {
+                    menuExpanded = false
+                    onRemoveFromFavouriteClick(contact)
+                }
+            )
+        }
     }
 
 }
@@ -235,7 +269,5 @@ fun CallLogItem(
 
         })
 }
-
-
 
 

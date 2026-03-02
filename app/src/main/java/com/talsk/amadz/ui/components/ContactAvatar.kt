@@ -37,7 +37,7 @@ fun ContactAvatarPreview() {
 
 @Composable
 fun ContactAvatar(
-    contact: Contact, modifier: Modifier = Modifier, onClick: () -> Unit
+    contact: Contact, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null
 ) {
     val borderColor = Color.Black.copy(alpha = 0.08f)
 
@@ -49,7 +49,14 @@ fun ContactAvatar(
             .background(contact.getBackgroundColor())
             // Add the border here
             .border(width = 1.dp, color = borderColor, shape = CircleShape)
-            .clickable(onClick = onClick), contentAlignment = Alignment.Center
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = Alignment.Center
     ) {
         when {
             // Case 1: Photo available

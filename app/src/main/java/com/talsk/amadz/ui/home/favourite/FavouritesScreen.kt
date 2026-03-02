@@ -39,7 +39,8 @@ fun FavouritesScreen(
         favourites = favourites,
         frequents = frequentCalledContacts,
         onCallClick = onCallClick,
-        onContactDetailCLick = onContactDetailCLick
+        onContactDetailCLick = onContactDetailCLick,
+        onRemoveFromFavouriteClick = { vm.removeFromFavourites(it.id) }
     )
 }
 
@@ -49,6 +50,7 @@ fun FavouritesScreenInternal(
     frequents: List<Contact>,
     onCallClick: (Contact) -> Unit,
     onContactDetailCLick: (Contact) -> Unit,
+    onRemoveFromFavouriteClick: (Contact) -> Unit,
 ) {
     LazyColumn {
         item {
@@ -78,7 +80,8 @@ fun FavouritesScreenInternal(
                 FavouriteItemGroup(
                     contacts = contacts,
                     onCallClick = onCallClick,
-                    onContactDetailClick = onContactDetailCLick
+                    onContactDetailClick = onContactDetailCLick,
+                    onRemoveFromFavouriteClick = onRemoveFromFavouriteClick
                 )
             }
         }

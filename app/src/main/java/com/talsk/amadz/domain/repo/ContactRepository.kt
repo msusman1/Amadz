@@ -9,4 +9,5 @@ interface ContactRepository {
     suspend fun getContactByPhone(phoneNumber: String): Contact?
     suspend fun getCompanyName(contactId: Long): String?
     fun observeFavourites(): Flow<List<Contact>>
+    suspend fun removeFromFavourites(contactId: Long)
 }

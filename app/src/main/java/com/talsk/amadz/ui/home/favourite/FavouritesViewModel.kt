@@ -33,6 +33,10 @@ class FavouritesViewModel @Inject constructor(
         loadFrequent()
     }
 
+    fun removeFromFavourites(contactId: Long) = viewModelScope.launch {
+        runCatching { contactRepository.removeFromFavourites(contactId) }
+            .onFailure { Log.d("favmeod", "removeFromFavourites: ${it.message}") }
+    }
 
     private fun loadFrequent() = viewModelScope.launch {
         runCatching { callLogRepository.getFrequentCalledContacts() }
@@ -43,5 +47,4 @@ class FavouritesViewModel @Inject constructor(
             }
 
     }
-
 }
