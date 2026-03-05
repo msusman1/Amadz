@@ -96,7 +96,11 @@ fun HomeScreen() {
 
         NavDisplay(
             backStack = backStack,
-            modifier = Modifier.padding(paddingValues),
+            modifier = if (isHomeTab) {
+                Modifier.padding(paddingValues)
+            } else {
+                Modifier
+            },
             entryDecorators = listOf(
                 rememberSaveableStateHolderNavEntryDecorator(),
                 rememberViewModelStoreNavEntryDecorator()
