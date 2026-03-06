@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,6 +63,7 @@ fun HomeSearchBar(
     onSearchBarClick: () -> Unit,
     onSearchCloseClick: () -> Unit,
     onCallClick: (String) -> Unit,
+    onSettingsClick: () -> Unit,
     vm: SearchViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -110,6 +112,10 @@ fun HomeSearchBar(
                         if (searchBarState.isActive() && query.isNotEmpty()) {
                             IconButton(onClick = { vm.onSearchQueryChanged("") }) {
                                 Icon(Icons.Default.Close, contentDescription = "Clear")
+                            }
+                        } else if (!searchBarState.isActive()) {
+                            IconButton(onClick = onSettingsClick) {
+                                Icon(Icons.Default.Settings, contentDescription = "Settings")
                             }
                         }
                     },

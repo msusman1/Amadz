@@ -19,6 +19,10 @@ class BlockedNumberRepositoryImpl @Inject constructor(
         return blockedNumbers().contains(canonical)
     }
 
+    override fun getBlockedNumbers(): List<String> {
+        return blockedNumbers().toList().sorted()
+    }
+
     override fun block(phone: String) {
         val canonical = phone.toCanonicalNumber() ?: return
         val updated = blockedNumbers().toMutableSet().apply { add(canonical) }

@@ -32,6 +32,8 @@ import com.talsk.amadz.ui.home.contacts.ContactsScreen
 import com.talsk.amadz.ui.home.favourite.FavouritesScreen
 import com.talsk.amadz.ui.home.searchbar.HomeSearchBar
 import com.talsk.amadz.ui.home.searchbar.SearchBarState
+import com.talsk.amadz.ui.settings.BlockedNumbersScreen
+import com.talsk.amadz.ui.settings.SettingsScreen
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,7 +82,8 @@ fun HomeScreen() {
                     onSearchCloseClick = {
                         searchBarState = SearchBarState.COLLAPSED
                     },
-                    onCallClick = ::requestDial
+                    onCallClick = ::requestDial,
+                    onSettingsClick = { backStack.add(SettingsKey) }
                 )
             }
         },
@@ -152,6 +155,27 @@ fun HomeScreen() {
                         onAddContactClick = { phone ->
                             context.openContactAddScreen(phone)
                         },
+                    )
+                }
+                entry(SettingsKey) {
+                    SettingsScreen(
+                        onBackClick = {
+                            if (backStack.size > 1) {
+                                backStack.removeAt(backStack.lastIndex)
+                            }
+                        },
+                        onBlockedNumbersClick = {
+                            backStack.add(BlockedNumbersKey)
+                        }
+                    )
+                }
+                entry(BlockedNumbersKey) {
+                    BlockedNumbersScreen(
+                        onBackClick = {
+                            if (backStack.size > 1) {
+                                backStack.removeAt(backStack.lastIndex)
+                            }
+                        }
                     )
                 }
             }
