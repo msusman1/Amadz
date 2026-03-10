@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Backspace
@@ -23,6 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -37,6 +37,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.talsk.amadz.R
 import com.talsk.amadz.ui.IconButtonLongClickable
+import com.talsk.amadz.ui.theme.AmadzTheme
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/21/2023.
@@ -45,19 +46,22 @@ import com.talsk.amadz.ui.IconButtonLongClickable
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun KeyPadPrew() {
-    Column {
+    AmadzTheme(darkTheme = true) {
 
-        Spacer(Modifier.height(48.dp))
-        KeyPad(
-            phone = "2345",
-            onTapDown = {},
-            onTapUp = {},
-            onBackSpaceClicked = {},
-            onClearClicked = {},
-            onCallClicked = {},
-            showClearButton = false,
-            showCallButton = false,
-        )
+        Column {
+
+            Spacer(Modifier.height(48.dp))
+            KeyPad(
+                phone = "2345",
+                onTapDown = {},
+                onTapUp = {},
+                onBackSpaceClicked = {},
+                onClearClicked = {},
+                onCallClicked = {},
+                showClearButton = false,
+                showCallButton = false,
+            )
+        }
     }
 }
 
@@ -74,149 +78,152 @@ fun KeyPad(
     showCallButton: Boolean,
     showClearButton: Boolean,
 ) {
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .wrapContentHeight()
-            .padding(top = 16.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Box(
-            modifier = Modifier.fillMaxWidth()
+    Surface(modifier =modifier,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ){
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp, bottom = 16.dp, start = 16.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                modifier = Modifier
-                    .fillMaxWidth(1f)
-                    .padding(horizontal = 56.dp),
-                text = phone,
-                maxLines = 1,
-                style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center
-            )
-            if (showClearButton) {
-                IconButtonLongClickable(
-                    modifier = Modifier.align(Alignment.CenterEnd),
-                    onLongClick = onClearClicked,
-                    onClick = {
-                        if (phone.isNotEmpty()) {
-                            onBackSpaceClicked()
-                        }
-                    },
+            Box(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    modifier = Modifier
+                        .fillMaxWidth(1f)
+                        .padding(horizontal = 56.dp),
+                    text = phone,
+                    maxLines = 1,
+                    style = MaterialTheme.typography.headlineMedium,
+                    textAlign = TextAlign.Center
+                )
+                if (showClearButton) {
+                    IconButtonLongClickable(
+                        modifier = Modifier.align(Alignment.CenterEnd),
+                        onLongClick = onClearClicked,
+                        onClick = {
+                            if (phone.isNotEmpty()) {
+                                onBackSpaceClicked()
+                            }
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Backspace, contentDescription = "Call"
+                        )
+                    }
+                }
+
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                DialButton(
+                    title = '1',
+                    subtitle = "",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+                DialButton(
+                    title = '2',
+                    subtitle = "ABC",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+                DialButton(
+                    title = '3',
+                    subtitle = "DEF",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                DialButton(
+                    title = '4',
+                    subtitle = "GHI",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+                DialButton(
+                    title = '5',
+                    subtitle = "JKL",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+                DialButton(
+                    title = '6',
+                    subtitle = "MNO",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                DialButton(
+                    title = '7',
+                    subtitle = "PQRS",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+                DialButton(
+                    title = '8',
+                    subtitle = "TUV",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+                DialButton(
+                    title = '9',
+                    subtitle = "WXYZ",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                DialButton(
+                    title = '*',
+                    subtitle = "",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+                DialButton(
+                    title = '0',
+                    subtitle = "+",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+                DialButton(
+                    title = '#',
+                    subtitle = "",
+                    onTapDown = onTapDown,
+                    onTapUp = onTapUp
+                )
+            }
+            if (showCallButton) {
+                Button(
+                    onClick = { onCallClicked() },
+                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                    modifier = Modifier
+                        .height(56.dp)
+                        .align(Alignment.CenterHorizontally)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Backspace, contentDescription = "Call"
+                        painter = painterResource(id = R.drawable.baseline_call_24),
+                        contentDescription = "phone"
                     )
+                    Text(text = "Call", modifier = Modifier.padding(start = 16.dp))
                 }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            DialButton(
-                title = '1',
-                subtitle = "",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-            DialButton(
-                title = '2',
-                subtitle = "ABC",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-            DialButton(
-                title = '3',
-                subtitle = "DEF",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            DialButton(
-                title = '4',
-                subtitle = "GHI",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-            DialButton(
-                title = '5',
-                subtitle = "JKL",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-            DialButton(
-                title = '6',
-                subtitle = "MNO",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            DialButton(
-                title = '7',
-                subtitle = "PQRS",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-            DialButton(
-                title = '8',
-                subtitle = "TUV",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-            DialButton(
-                title = '9',
-                subtitle = "WXYZ",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            DialButton(
-                title = '*',
-                subtitle = "",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-            DialButton(
-                title = '0',
-                subtitle = "+",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-            DialButton(
-                title = '#',
-                subtitle = "",
-                onTapDown = onTapDown,
-                onTapUp = onTapUp
-            )
-        }
-        if (showCallButton) {
-            Button(
-                onClick = { onCallClicked() },
-                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                modifier = Modifier
-                    .height(56.dp)
-                    .align(Alignment.CenterHorizontally)
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.baseline_call_24),
-                    contentDescription = "phone"
-                )
-                Text(text = "Call", modifier = Modifier.padding(start = 16.dp))
-            }
-        }
-
     }
 }
 
@@ -258,8 +265,12 @@ fun RowScope.DialButton(
         Text(
             text = title.toString(),
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
-        Text(text = subtitle, style = MaterialTheme.typography.bodySmall)
+        Text(
+            text = subtitle, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onBackground
+        )
     }
 }

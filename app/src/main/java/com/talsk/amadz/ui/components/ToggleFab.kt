@@ -47,6 +47,6 @@ fun ToggleFab(
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
-        Text(text = text)
+        Text(text = text,color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

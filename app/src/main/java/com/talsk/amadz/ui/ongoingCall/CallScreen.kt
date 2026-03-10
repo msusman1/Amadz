@@ -1,6 +1,5 @@
 package com.talsk.amadz.ui.ongoingCall
 
-import android.telephony.TelephonyManager
 import android.util.Log
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -8,8 +7,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,18 +34,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.talsk.amadz.R
-import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.domain.CallAction
+import com.talsk.amadz.domain.entity.CallState
+import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactAvatar
+import com.talsk.amadz.ui.components.SimErrorDialog
 import com.talsk.amadz.ui.components.ToggleFab
 import com.talsk.amadz.ui.home.KeyPad
-import com.talsk.amadz.domain.entity.CallDirection
-import com.talsk.amadz.domain.entity.CallState
-import com.talsk.amadz.ui.components.SimErrorDialog
+import com.talsk.amadz.ui.theme.AmadzTheme
 import com.talsk.amadz.ui.theme.green
 import com.talsk.amadz.ui.theme.red
 import com.talsk.amadz.util.secondsToReadableTime
-import kotlin.math.log
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/17/2023.
@@ -56,21 +53,23 @@ import kotlin.math.log
 @Preview
 @Composable
 private fun CallScreenPrev() {
-    CallScreen(
-        contact = ContactWithCompanyName(
-            contact = Contact(
-                id = 232L,
-                name = "ALi",
-                phone = "45678o",
-                image = null,
+    AmadzTheme(darkTheme = false) {
+        CallScreen(
+            contact = ContactWithCompanyName(
+                contact = Contact(
+                    id = 232L,
+                    name = "ALi",
+                    phone = "45678o",
+                    image = null,
 
-                ),
-            companyName = "Visa",
-        ),
-        uiState = CallState.Idle,
-        onAction = {},
-        onFinish = {}
-    )
+                    ),
+                companyName = "Visa",
+            ),
+            uiState = CallState.Idle,
+            onAction = {},
+            onFinish = {}
+        )
+    }
 }
 
 
@@ -99,34 +98,29 @@ fun CallScreen(
     }
 
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .weight(0.7f)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                CallHeader(
-                    contact = contact.contact,
-                    companyName = contact.companyName,
-                    uiState = uiState,
-                    onContactDetailClick = {}
-                )
-                KeyPad(
-                    keyboardOpen = keyboardOpen,
-                    startTone = { onAction(CallAction.StartDialTone(it)) },
-                    stopTone = { onAction(CallAction.StopDialTone) }
-                )
-            }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        CallHeader(
+            modifier = Modifier.weight(1.0f),
+            contact = contact.contact,
+            companyName = contact.companyName,
+            uiState = uiState,
+            onContactDetailClick = {}
+        )
 
-        }
+        KeyPad(
+            keyboardOpen = keyboardOpen,
+            startTone = { onAction(CallAction.StartDialTone(it)) },
+            stopTone = { onAction(CallAction.StopDialTone) }
+        )
         Column(
             modifier = Modifier
-                .weight(0.3f)
                 .background(color = MaterialTheme.colorScheme.surfaceVariant)
-                .padding(horizontal = 32.dp), verticalArrangement = Arrangement.SpaceEvenly
+                .padding(32.dp), verticalArrangement = Arrangement.SpaceEvenly
         ) {
 
             Row(
@@ -171,65 +165,64 @@ fun CallScreen(
 
 @Composable
 fun CallHeader(
+    modifier: Modifier = Modifier,
     contact: Contact,
     companyName: String?,
     uiState: CallState,
     onContactDetailClick: (Contact) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
-    ) {
-        Spacer(modifier = Modifier.height(56.dp))
-        ContactAvatar(
-            modifier = Modifier.size(96.dp),
-            contact = contact,
-            onClick = { onContactDetailClick(contact) })
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(contact.name, style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(companyName ?: "", style = MaterialTheme.typography.titleMedium)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(contact.phone, style = MaterialTheme.typography.bodyLarge)
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            uiState.toReadableStatus(),
-            style = MaterialTheme.typography.bodySmall
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        if (uiState is CallState.Active) {
+    Surface {
+        Column(
+            modifier = modifier
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
+            Spacer(modifier = Modifier.height(56.dp))
+            ContactAvatar(
+                modifier = Modifier.size(96.dp),
+                contact = contact,
+                onClick = { onContactDetailClick(contact) })
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(contact.name, style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(companyName ?: "", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(contact.phone, style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = secondsToReadableTime(uiState.duration),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold
+                uiState.toReadableStatus(),
+                style = MaterialTheme.typography.bodySmall
             )
-        } else if (uiState is CallState.OnHold) {
-            Text(
-                text = "Call On Hold",
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold
-            )
+            Spacer(modifier = Modifier.height(12.dp))
+            if (uiState is CallState.Active) {
+                Text(
+                    text = secondsToReadableTime(uiState.duration),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold
+                )
+            } else if (uiState is CallState.OnHold) {
+                Text(
+                    text = "Call On Hold",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
 
 @Composable
-fun BoxScope.KeyPad(keyboardOpen: Boolean, startTone: (Char) -> Unit, stopTone: () -> Unit) {
+fun KeyPad(keyboardOpen: Boolean, startTone: (Char) -> Unit, stopTone: () -> Unit) {
     var dialed by rememberSaveable { mutableStateOf("") }
     androidx.compose.animation.AnimatedVisibility(
         visible = keyboardOpen,
         enter = fadeIn() + slideInVertically { it / 2 },
         exit = slideOutVertically { it / 2 } + fadeOut(),
-        modifier = Modifier
-            .align(alignment = Alignment.BottomCenter),
-    ) {
+
+        ) {
 
         KeyPad(
-            modifier = Modifier
-                .background(color = MaterialTheme.colorScheme.surfaceVariant)
-                .align(alignment = Alignment.BottomCenter),
             phone = dialed,
             onTapDown = {
                 dialed += it
@@ -257,7 +250,9 @@ fun CallActionButtons(
     onHangup: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 24.dp),
         horizontalArrangement = if (uiState.isIncomingCall()) Arrangement.SpaceBetween else Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
