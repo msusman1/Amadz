@@ -9,6 +9,15 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            keyAlias = "Amadz1122"
+            keyPassword = "Amadz1122"
+            storeFile = file("../signature/release.keystore")
+            storePassword = "Amadz1122"
+        }
+    }
+
     namespace = "com.talsk.amadz"
     compileSdk = 36
 
@@ -33,6 +42,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
