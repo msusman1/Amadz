@@ -9,9 +9,11 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.Person
 import com.talsk.amadz.MainActivity
 import com.talsk.amadz.R
 import com.talsk.amadz.domain.NotificationController
@@ -58,7 +60,7 @@ class DefaultNotificationController @Inject constructor(
     override suspend fun buildIncomingCallNotification(phone: String): Notification {
         val contact = loadContactUi(phone)
 
-        return baseCallBuilder(
+        val builder = baseCallBuilder(
             title = "Incoming Call",
             content = contact.title,
             subText = contact.subtitle,
@@ -71,22 +73,37 @@ class DefaultNotificationController @Inject constructor(
             setOngoing(true)
             setCategory(NotificationCompat.CATEGORY_CALL)
             setFullScreenIntent(callActivityIntent(phone), true)
-            addAction(
+            setDeleteIntent(callActionIntent(CallActionReceiver.ACTION_DECLINE))
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val person = contact.toPerson()
+            builder.setStyle(
+                NotificationCompat.CallStyle.forIncomingCall(
+                    person,
+                    callActionIntent(CallActionReceiver.ACTION_DECLINE),
+                    callActionIntent(CallActionReceiver.ACTION_ACCEPT)
+                )
+            )
+        } else {
+            builder.addAction(
                 R.drawable.baseline_check_24,
                 "Accept",
                 callActionIntent(CallActionReceiver.ACTION_ACCEPT)
             )
-            addAction(
+            builder.addAction(
                 R.drawable.outline_clear_24,
                 "Decline",
                 callActionIntent(CallActionReceiver.ACTION_DECLINE)
             )
-        }.build()
+        }
+
+        return builder.build()
     }
 
     override suspend fun buildOutgoingCallNotification(phone: String): Notification {
         val contact = loadContactUi(phone)
-        return baseCallBuilder(
+        val builder = baseCallBuilder(
             title = "Outgoing Call",
             content = contact.title,
             subText = contact.subtitle,
@@ -100,12 +117,25 @@ class DefaultNotificationController @Inject constructor(
             setOnlyAlertOnce(true)
             setCategory(NotificationCompat.CATEGORY_SERVICE)
             setSilent(true)
-            addAction(
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val person = contact.toPerson()
+            builder.setStyle(
+                NotificationCompat.CallStyle.forOngoingCall(
+                    person,
+                    callActionIntent(CallActionReceiver.ACTION_DECLINE)
+                )
+            )
+        } else {
+            builder.addAction(
                 R.drawable.outline_clear_24,
                 "Hang up",
                 callActionIntent(CallActionReceiver.ACTION_DECLINE)
             )
-        }.build()
+        }
+
+        return builder.build()
     }
 
     override suspend fun buildOngoingCallNotification(
@@ -113,7 +143,7 @@ class DefaultNotificationController @Inject constructor(
         durationSeconds: Int
     ): Notification {
         val contact = loadContactUi(phone)
-        return baseCallBuilder(
+        val builder = baseCallBuilder(
             title = "Ongoing Call",
             content = contact.title,
             subText = contact.subtitle,
@@ -129,12 +159,25 @@ class DefaultNotificationController @Inject constructor(
             setSilent(true)
             setUsesChronometer(true)
             setWhen(System.currentTimeMillis() - durationSeconds * 1000L)
-            addAction(
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val person = contact.toPerson()
+            builder.setStyle(
+                NotificationCompat.CallStyle.forOngoingCall(
+                    person,
+                    callActionIntent(CallActionReceiver.ACTION_DECLINE)
+                )
+            )
+        } else {
+            builder.addAction(
                 R.drawable.outline_clear_24,
                 "Hang up",
                 callActionIntent(CallActionReceiver.ACTION_DECLINE)
             )
-        }.build()
+        }
+
+        return builder.build()
     }
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
@@ -262,4 +305,11 @@ class DefaultNotificationController @Inject constructor(
 
     private fun defaultAvatar(): Bitmap =
         BitmapFactory.decodeResource(context.resources, R.drawable.profile_pic)
+
+    private fun ContactUi.toPerson(): Person {
+        return Person.Builder()
+            .setName(title)
+            .setImportant(true)
+            .build()
+    }
 }
