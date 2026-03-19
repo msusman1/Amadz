@@ -1,9 +1,14 @@
 package com.talsk.amadz.ui.home.calllogs
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -56,6 +61,13 @@ fun CallLogsScreenInternal(
     onCallClick: (String) -> Unit,
     onCallLogClick: (CallLogData) -> Unit,
 ) {
+    if (callLogs.itemCount == 0) {
+        Text(
+            text = "No call logs found",
+            modifier = Modifier.fillMaxWidth().padding(32.dp),
+            textAlign = TextAlign.Center
+        )
+    }
     LazyPagedColumn(
         modifier = Modifier.fillMaxSize(),
         pagingItems = callLogs

@@ -67,6 +67,15 @@ class CallLogRepositoryImpl @Inject constructor(
     }
 
     @SuppressLint("MissingPermission")
+    override suspend fun deleteAllCallLogs(): Int = withContext(ioDispatcher) {
+        contentResolver.delete(
+            CallLog.Calls.CONTENT_URI,
+            null,
+            null
+        )
+    }
+
+    @SuppressLint("MissingPermission")
     override suspend fun getFrequentCalledContacts(): List<Contact> =
         withContext(ioDispatcher) {
 

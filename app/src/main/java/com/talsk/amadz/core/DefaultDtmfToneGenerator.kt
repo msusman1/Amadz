@@ -1,8 +1,11 @@
 package com.talsk.amadz.core
 
+import android.content.Context
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.provider.Settings
 import com.talsk.amadz.domain.DtmfToneGenerator
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 fun Char.toTone(): Int {
@@ -23,12 +26,15 @@ fun Char.toTone(): Int {
     }
 }
 
-class DefaultDtmfToneGenerator @Inject constructor() : DtmfToneGenerator {
+class DefaultDtmfToneGenerator @Inject constructor(
+    @ApplicationContext private val context: Context
+) : DtmfToneGenerator {
     private val toneGenerator by lazy {
         ToneGenerator(AudioManager.STREAM_DTMF, 80)
     }
 
     override fun startTone(digit: Char) {
+        if (!shouldPlayTone()) return
         toneGenerator.startTone(digit.toTone())
     }
 
@@ -38,5 +44,18 @@ class DefaultDtmfToneGenerator @Inject constructor() : DtmfToneGenerator {
 
     fun release() {
         toneGenerator.release()
+    }
+
+    private fun shouldPlayTone(): Boolean {
+        if (!DtmfTonePrefs.isEnabled(context)) return false
+
+        val audioManager = context.getSystemService(AudioManager::class.java) ?: return false
+        if (audioManager.ringerMode != AudioManager.RINGER_MODE_NORMAL) return false
+        if (audioManager.getStreamVolume(AudioManager.STREAM_DTMF) == 0) return false
+
+        val resolver = context.contentResolver
+        val dtmfEnabled =
+            Settings.System.getInt(resolver, Settings.System.DTMF_TONE_WHEN_DIALING, 1) == 1
+        return dtmfEnabled
     }
 }
