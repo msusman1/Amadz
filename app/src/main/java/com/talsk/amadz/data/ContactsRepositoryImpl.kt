@@ -19,6 +19,7 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.talsk.amadz.di.IODispatcher
 import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.domain.repo.ContactRepository
+import com.talsk.amadz.util.toT9GlobPattern
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
@@ -112,9 +113,19 @@ class ContactsRepositoryImpl @Inject constructor(
             if (query.isBlank()) return@withContext emptyList()
 
             val normalizedQuery = query.trim()
-            val selection =
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? OR ${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ?".trimIndent()
-            val args = arrayOf("%$normalizedQuery%", "%$normalizedQuery%")
+            val t9Pattern = normalizedQuery.toT9GlobPattern()
+            val nameColumn = ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
+            val numberColumn = ContactsContract.CommonDataKinds.Phone.NUMBER
+            val selection = buildString {
+                append("($nameColumn LIKE ? OR $numberColumn LIKE ?")
+                if (t9Pattern != null) append(" OR $nameColumn GLOB ?")
+                append(")")
+            }
+            val args = buildList {
+                add("%$normalizedQuery%")
+                add("%$normalizedQuery%")
+                if (t9Pattern != null) add(t9Pattern)
+            }.toTypedArray()
             val phoneAndNameMatches = contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 phoneProjection,

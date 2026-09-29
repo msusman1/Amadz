@@ -15,6 +15,7 @@ import com.talsk.amadz.domain.repo.CallLogRepository
 import com.talsk.amadz.domain.repo.ContactDetailProvider
 import com.talsk.amadz.domain.repo.ContactPhotoProvider
 import com.talsk.amadz.domain.repo.SimInfoProvider
+import com.talsk.amadz.util.toT9GlobPattern
 import com.talsk.amadz.ui.extensions.getStringOrEmpty
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -135,11 +136,18 @@ class CallLogRepositoryImpl @Inject constructor(
         if (query.isBlank()) return@withContext emptyList()
 
         val normalizedQuery = query.trim()
-        val selection = """
-            ${CallLog.Calls.NUMBER} LIKE ?
-            OR ${CallLog.Calls.CACHED_NAME} LIKE ?
-        """.trimIndent()
-        val selectionArgs = arrayOf("%$normalizedQuery%", "%$normalizedQuery%")
+        val t9Pattern = normalizedQuery.toT9GlobPattern()
+        val nameColumn = CallLog.Calls.CACHED_NAME
+        val selection = buildString {
+            append("(${CallLog.Calls.NUMBER} LIKE ? OR $nameColumn LIKE ?")
+            if (t9Pattern != null) append(" OR $nameColumn GLOB ?")
+            append(")")
+        }
+        val selectionArgs = buildList {
+            add("%$normalizedQuery%")
+            add("%$normalizedQuery%")
+            if (t9Pattern != null) add(t9Pattern)
+        }.toTypedArray()
 
         contentResolver.query(
             CallLog.Calls.CONTENT_URI,
