@@ -54,7 +54,7 @@ fun OnboardingScreen(onRequestDialerPermission: () -> Unit) {
         ) {
             Image(
                 modifier = Modifier.size(140.dp),
-                painter = painterResource(id = R.drawable.app_logo_short),
+                painter = painterResource(id = R.drawable.app_logo),
                 contentDescription = "App Icon"
             )
             Spacer(modifier = Modifier.height(56.dp))

@@ -90,7 +90,7 @@ class DefaultNotificationController @Inject constructor(
         durationSeconds: Int?
     ): Notification {
         val builder = NotificationCompat.Builder(context, type.channelId)
-            .setSmallIcon(R.drawable.app_logo_short_notification)
+            .setSmallIcon(R.drawable.app_logo)
             .setContentTitle(type.title)
             .setContentText(contact.title)
             .setSubText(contact.subtitle)
@@ -216,7 +216,7 @@ class DefaultNotificationController @Inject constructor(
     override suspend fun showMissedCallNotification(phone: String) {
         val contact = loadContactUi(phone)
         val notification = NotificationCompat.Builder(context, INCOMING_CALL_CHANNEL_ID)
-            .setSmallIcon(R.drawable.app_logo_short_notification).setContentTitle("Missed Call")
+            .setSmallIcon(R.drawable.app_logo).setContentTitle("Missed Call")
             .setContentText(contact.title).setSubText(contact.subtitle)
             .setLargeIcon(contact.avatar ?: defaultAvatar).setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_MISSED_CALL)
