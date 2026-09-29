@@ -194,7 +194,6 @@ class DefaultCallOrchestrator @Inject constructor(
 
     override fun onCallAdded(call: Call) {
         Log.d(TAG, "onCallAdded: $call")
-        App.needCallLogRefresh = true
         startNewSessionScope()
         currentCall?.unregisterCallback(telecomCallback)
         currentCall = call

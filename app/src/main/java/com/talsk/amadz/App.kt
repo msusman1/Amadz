@@ -7,9 +7,4 @@ import dagger.hilt.android.HiltAndroidApp
  * Created by Muhammad Usman : msusman97@gmail.com on 11/17/2023.
  */
 @HiltAndroidApp
-class App : Application(){
-    companion object{
-        var needCallLogRefresh: Boolean = false
-
-    }
-}
+class App : Application()

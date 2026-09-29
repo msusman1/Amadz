@@ -64,7 +64,6 @@ class CallLogHistoryViewModel @Inject constructor(
         if (phone.isBlank()) return
         viewModelScope.launch {
             callLogRepository.deleteCallLogsByPhone(phone)
-            App.needCallLogRefresh = true
             _uiState.value = _uiState.value.copy(logs = emptyList())
         }
     }
