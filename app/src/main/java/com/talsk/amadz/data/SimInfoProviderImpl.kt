@@ -4,6 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.telecom.TelecomManager
 import android.telephony.SubscriptionManager
+import android.telephony.TelephonyManager
+import com.talsk.amadz.core.toSimStateReadable
+import com.talsk.amadz.domain.entity.CallState
 import com.talsk.amadz.domain.repo.SimInfoProvider
 import com.talsk.amadz.domain.entity.SimInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -14,6 +17,7 @@ import javax.inject.Singleton
 class SimInfoProviderImpl @Inject constructor(
     @ApplicationContext context: Context
 ) : SimInfoProvider {
+    private val telephonyManager = context.getSystemService(TelephonyManager::class.java)
     private val telecomManager =
         context.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
     private val subscriptionManager =
@@ -41,5 +45,16 @@ class SimInfoProviderImpl @Inject constructor(
         return tempList.also {
             cache = it
         }
+    }
+
+   override fun checkSimState(): CallState.SimError? {
+        val simState = this.telephonyManager?.simState ?: TelephonyManager.SIM_STATE_UNKNOWN
+        if (simState != TelephonyManager.SIM_STATE_READY) {
+            return CallState.SimError(
+                simState = simState,
+                message = simState.toSimStateReadable()
+            )
+        }
+        return null
     }
 }

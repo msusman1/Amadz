@@ -24,5 +24,6 @@ class CallActionReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_ACCEPT = "com.talsk.amadz.call.ACTION_ACCEPT"
         const val ACTION_DECLINE = "com.talsk.amadz.call.ACTION_DECLINE"
+        const val EXTRA_PHONE = "com.talsk.amadz.call.EXTRA_PHONE"
     }
 }

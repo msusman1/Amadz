@@ -1,22 +1,23 @@
 package com.talsk.amadz.core
 
-import android.content.Context
 import android.telecom.Call
 import android.telecom.Call.Callback
+import android.telecom.DisconnectCause
 import android.telecom.VideoProfile
-import android.telephony.TelephonyManager
 import android.util.Log
 import com.talsk.amadz.App
+import com.talsk.amadz.di.ApplicationScope
 import com.talsk.amadz.domain.CallAction
 import com.talsk.amadz.domain.CallOrchestrator
 import com.talsk.amadz.domain.CallServiceAudioDelegate
 import com.talsk.amadz.domain.entity.CallDirection
 import com.talsk.amadz.domain.entity.CallState
 import com.talsk.amadz.domain.repo.BlockedNumberRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.talsk.amadz.domain.repo.SimInfoProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,9 +26,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.SupervisorJob
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val TAG = "DefaultCallOrchestrator"
 
@@ -35,45 +36,42 @@ private const val TAG = "DefaultCallOrchestrator"
 class DefaultCallOrchestrator @Inject constructor(
     private val blockedNumberRepository: BlockedNumberRepository,
     private val callUiEffects: CallUiEffects,
-    @ApplicationContext context: Context,
+    private val simInfoProvider: SimInfoProvider,
+    @ApplicationScope private val appScope: CoroutineScope
 ) : CallOrchestrator {
 
     private val _callState = MutableStateFlow<CallState>(CallState.Idle)
     override val callState: StateFlow<CallState> = _callState.asStateFlow()
-
     private var sessionScope: CoroutineScope? = null
-    private var sessionJob: Job? = null
     private var currentCall: Call? = null
     private var timerJob: Job? = null
     private var callServiceAudioDelegate: CallServiceAudioDelegate? = null
 
     private var currentCallInitialState: Int? = null
+    private var currentCallSimError: CallState.SimError? = null
+    private var currentCallWasDeclined = false
     private var micMuted: Boolean = false
     private var speakerOn: Boolean = false
 
-    private val telephonyManager = context.getSystemService(TelephonyManager::class.java)
-
-    private fun checkSimState() {
-        val simState = telephonyManager.simState
-        if (simState != TelephonyManager.SIM_STATE_READY) {
-            _callState.value = CallState.SimError(
-                simState = simState,
-                message = simState.toSimStateReadable()
-            )
-        }
-    }
 
     private val telecomCallback = object : Callback() {
         override fun onStateChanged(call: Call, state: Int) {
             Log.d(TAG, "onStateChanged: state=$state")
-            mapCallState(call, state)
+            if (call === currentCall) {
+                handleCallState(call, state)
+            }
         }
     }
 
     override fun onAction(callAction: CallAction) {
         when (callAction) {
             CallAction.Answer -> currentCall?.answer(VideoProfile.STATE_AUDIO_ONLY)
-            CallAction.Hangup -> currentCall?.disconnect()
+            CallAction.Hangup -> {
+                if (currentCall?.stateCompat == Call.STATE_RINGING) {
+                    currentCallWasDeclined = true
+                }
+                currentCall?.disconnect()
+            }
             is CallAction.Hold -> if (callAction.enabled) currentCall?.hold() else currentCall?.unhold()
             is CallAction.Mute -> {
                 micMuted = callAction.enabled
@@ -102,9 +100,7 @@ class DefaultCallOrchestrator @Inject constructor(
 
     private fun startNewSessionScope() {
         cancelSessionScope()
-        val job = SupervisorJob()
-        sessionJob = job
-        sessionScope = CoroutineScope(job + Dispatchers.Main.immediate)
+        sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     }
 
     private fun sessionScopeOrCreate(): CoroutineScope {
@@ -118,17 +114,30 @@ class DefaultCallOrchestrator @Inject constructor(
         timerJob = null
         sessionScope?.cancel()
         sessionScope = null
-        sessionJob = null
     }
 
     private fun resetSessionState() {
         currentCall = null
         currentCallInitialState = null
+        currentCallSimError = null
+        currentCallWasDeclined = false
         micMuted = false
         speakerOn = false
     }
 
-    private fun mapCallState(call: Call, state: Int) {
+    private fun handleCallState(call: Call, state: Int) {
+        if (currentCallSimError != null && state != Call.STATE_ACTIVE) {
+            if (state == Call.STATE_DISCONNECTED) {
+                callUiEffects.stopCallUi()
+                timerJob?.cancel()
+                timerJob = null
+            }
+            return
+        }
+        if (state == Call.STATE_ACTIVE) {
+            currentCallSimError = null
+        }
+
         val phone = call.callerPhone()
         when (state) {
             Call.STATE_ACTIVE -> {
@@ -171,7 +180,7 @@ class DefaultCallOrchestrator @Inject constructor(
         timerJob?.cancel()
         timerJob = sessionScopeOrCreate().launch {
             while (isActive) {
-                delay(1_000)
+                delay(1_000.milliseconds)
                 _callState.update {
                     if (it is CallState.Active) {
                         it.copy(duration = it.duration + 1)
@@ -185,30 +194,24 @@ class DefaultCallOrchestrator @Inject constructor(
 
     override fun onCallAdded(call: Call) {
         Log.d(TAG, "onCallAdded: $call")
-        checkSimState()
         App.needCallLogRefresh = true
         startNewSessionScope()
-
         currentCall?.unregisterCallback(telecomCallback)
-
         currentCall = call
         currentCallInitialState = call.stateCompat
-        mapCallState(call, call.stateCompat)
+        currentCallWasDeclined = false
+        val isOutgoing = call.stateCompat == Call.STATE_CONNECTING ||
+                call.stateCompat == Call.STATE_DIALING
+        currentCallSimError = if (isOutgoing) simInfoProvider.checkSimState() else null
+        currentCallSimError?.let { _callState.value = it }
+        handleCallState(call, call.stateCompat)
         call.registerCallback(telecomCallback)
 
-        val isOutgoing =
-            call.stateCompat == Call.STATE_CONNECTING || call.stateCompat == Call.STATE_DIALING
         val isIncomingRinging = call.stateCompat == Call.STATE_RINGING && !isOutgoing
-
+        val phone = call.callerPhone()
         when {
-            isOutgoing -> {
-                val phone = call.callerPhone()
-                callUiEffects.launchCallScreen(phone)
-                callUiEffects.showOutgoing(phone)
-            }
-
+            isOutgoing -> callUiEffects.showOutgoing(phone)
             isIncomingRinging -> {
-                val phone = call.callerPhone()
                 if (blockedNumberRepository.isBlocked(phone)) {
                     onAction(CallAction.Hangup)
                     callUiEffects.stopCallUi()
@@ -221,21 +224,37 @@ class DefaultCallOrchestrator @Inject constructor(
 
     override fun onCallRemoved(call: Call) {
         Log.d(TAG, "onCallRemoved: $call")
-        currentCall?.unregisterCallback(telecomCallback)
+        if (call !== currentCall) {
+            call.unregisterCallback(telecomCallback)
+            return
+        }
+        call.unregisterCallback(telecomCallback)
         callUiEffects.stopCallUi()
 
+        val phone = call.callerPhone()
         val wasIncomingRingingAtStart = currentCallInitialState == Call.STATE_RINGING
         val wasNeverConnected = call.details.connectTimeMillis == 0L
         val isDisconnected = call.stateCompat == Call.STATE_DISCONNECTED
-        if (wasIncomingRingingAtStart && wasNeverConnected && isDisconnected) {
-            sessionScopeOrCreate().launch {
-                callUiEffects.showMissedCall(call.callerPhone())
-                cancelSessionScope()
-                resetSessionState()
+        val disconnectCause = call.details.disconnectCause?.code
+        val wasRejected = disconnectCause == DisconnectCause.REJECTED ||
+                disconnectCause == DisconnectCause.LOCAL
+        val wasDeclined = currentCallWasDeclined
+
+        cancelSessionScope()
+        val callSimError = currentCallSimError
+        resetSessionState()
+        when {
+            callSimError != null -> _callState.value = callSimError
+            isDisconnected -> _callState.value = CallState.CallDisconnected
+            else -> _callState.value = CallState.Idle
+        }
+
+        if (wasIncomingRingingAtStart && wasNeverConnected && isDisconnected &&
+            !wasDeclined && !wasRejected
+        ) {
+            appScope.launch {
+                callUiEffects.showMissedCall(phone)
             }
-        } else {
-            cancelSessionScope()
-            resetSessionState()
         }
     }
 
@@ -244,6 +263,8 @@ class DefaultCallOrchestrator @Inject constructor(
         callServiceAudioDelegate = null
         cancelSessionScope()
         resetSessionState()
-        _callState.value = CallState.Idle
+        if (_callState.value != CallState.CallDisconnected && _callState.value !is CallState.SimError) {
+            _callState.value = CallState.Idle
+        }
     }
 }

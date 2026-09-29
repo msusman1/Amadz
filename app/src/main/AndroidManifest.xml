@@ -82,7 +82,7 @@
                 android:value="true" />
             <meta-data
                 android:name="android.telecom.IN_CALL_SERVICE_RINGING"
-                android:value="true" />
+                android:value="false" />
 
             <intent-filter>
                 <action android:name="android.telecom.InCallService" />

@@ -29,21 +29,29 @@ fun Char.toTone(): Int {
 class DefaultDtmfToneGenerator @Inject constructor(
     @ApplicationContext private val context: Context
 ) : DtmfToneGenerator {
-    private val toneGenerator by lazy {
-        ToneGenerator(AudioManager.STREAM_DTMF, 80)
+
+    private var toneGenerator: ToneGenerator? = null
+
+    init {
+        runCatching {
+            toneGenerator = ToneGenerator(AudioManager.STREAM_DTMF, 80)
+        }
     }
 
     override fun startTone(digit: Char) {
         if (!shouldPlayTone()) return
-        toneGenerator.startTone(digit.toTone())
+        runCatching { toneGenerator?.startTone(digit.toTone()) }
     }
 
     override fun stopTone() {
-        toneGenerator.stopTone()
+        runCatching { toneGenerator?.stopTone() }
     }
 
     fun release() {
-        toneGenerator.release()
+        runCatching {
+            toneGenerator?.release()
+            toneGenerator = null
+        }
     }
 
     private fun shouldPlayTone(): Boolean {
@@ -54,8 +62,6 @@ class DefaultDtmfToneGenerator @Inject constructor(
         if (audioManager.getStreamVolume(AudioManager.STREAM_DTMF) == 0) return false
 
         val resolver = context.contentResolver
-        val dtmfEnabled =
-            Settings.System.getInt(resolver, Settings.System.DTMF_TONE_WHEN_DIALING, 1) == 1
-        return dtmfEnabled
+        return Settings.System.getInt(resolver, Settings.System.DTMF_TONE_WHEN_DIALING, 1) == 1
     }
 }

@@ -7,10 +7,12 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
-import androidx.annotation.RequiresPermission
+import android.util.LruCache
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
@@ -22,13 +24,14 @@ import com.talsk.amadz.domain.repo.ContactRepository
 import com.talsk.amadz.ui.ongoingCall.CallActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import javax.inject.Singleton
 
-private const val INCOMING_CALL_CHANNEL_ID = "AMADZ_INCOMING_CALL_NOTIFICATION_ID"
-private const val INCOMING_CALL_CHANNEL_NAME = "AMADZ_INCOMING_CALL_NOTIFICATION"
-private const val ONGOING_CALL_CHANNEL_ID = "AMADZ_ONGOING_CALL_NOTIFICATION_ID"
-private const val ONGOING_CALL_CHANNEL_NAME = "AMADZ_ONGOING_CALL_NOTIFICATION"
+enum class CallNotificationType {
+    INCOMING,
+    OUTGOING,
+    ONGOING
+}
 
-private const val MISSED_CALL_NOTIFICATION_ID = 125
 
 data class ContactUi(
     val title: String,
@@ -36,7 +39,7 @@ data class ContactUi(
     val avatar: Bitmap?
 )
 
-
+@Singleton
 class DefaultNotificationController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val contactRepository: ContactRepository,
@@ -44,163 +47,222 @@ class DefaultNotificationController @Inject constructor(
 ) : NotificationController {
 
     private val notificationManager = NotificationManagerCompat.from(context)
-    private val contactUiCache = mutableMapOf<String, ContactUi>()
+    private val contactUiCache = LruCache<String, ContactUi>(30)
 
-
-
-    init {
-        createNotificationChannel()
+    private val defaultAvatar: Bitmap by lazy(LazyThreadSafetyMode.NONE) {
+        BitmapFactory.decodeResource(
+            context.resources,
+            R.drawable.profile_pic
+        )
     }
 
-    // ----------------------------
-    // Public API (NOW SUSPEND)
-    // ----------------------------
+    init {
+        createNotificationChannels()
+    }
 
+    override fun buildForegroundNotification(
+        phone: String,
+        type: CallNotificationType
+    ): Notification {
+        val contact = contactUiCache.get(phone)
+        val contactTitle = contact?.title ?: phone.ifBlank { "Unknown" }
+        val contactSubtitle = contact?.subtitle
 
-    override suspend fun buildIncomingCallNotification(phone: String): Notification {
-        val contact = loadContactUi(phone)
-
-        val builder = baseCallBuilder(
-            title = "Incoming Call",
-            content = contact.title,
-            subText = contact.subtitle,
-            largeIcon = contact.avatar,
-            priority = NotificationCompat.PRIORITY_MAX,
+        return buildCallNotification(
             phone = phone,
-            channelId = INCOMING_CALL_CHANNEL_ID
-        ).apply {
-            setAutoCancel(false)
-            setOngoing(true)
-            setCategory(NotificationCompat.CATEGORY_CALL)
-            setFullScreenIntent(callActivityIntent(phone), true)
-            setDeleteIntent(callActionIntent(CallActionReceiver.ACTION_DECLINE))
-        }
+            type = type,
+            contact = ContactUi(
+                title = contactTitle,
+                subtitle = contactSubtitle,
+                avatar = contact?.avatar
+            ),
+            useRichStyle = false,
+            durationSeconds = null
+        )
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val person = contact.toPerson()
+    }
+
+    private fun buildCallNotification(
+        phone: String,
+        type: CallNotificationType,
+        contact: ContactUi,
+        useRichStyle: Boolean,
+        durationSeconds: Int?
+    ): Notification {
+        val builder = NotificationCompat.Builder(context, type.channelId)
+            .setSmallIcon(R.drawable.app_logo_short_notification)
+            .setContentTitle(type.title)
+            .setContentText(contact.title)
+            .setSubText(contact.subtitle)
+            .setLargeIcon(contact.avatar ?: defaultAvatar)
+            .setOngoing(true)
+            .setAutoCancel(false)
+            .setPriority(type.priority)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(callActivityIntent(phone))
+        when (type) {
+            CallNotificationType.INCOMING -> {
+                configureIncomingNotification(
+                    builder = builder,
+                    phone = phone,
+                    contact = contact,
+                    useRichStyle = useRichStyle
+                )
+            }
+
+            CallNotificationType.OUTGOING -> {
+                configureOngoingNotification(
+                    builder = builder,
+                    phone = phone,
+                    contact = contact,
+                    useRichStyle = useRichStyle,
+                    durationSeconds = durationSeconds
+                )
+            }
+
+            CallNotificationType.ONGOING -> {
+                configureOngoingNotification(
+                    builder = builder,
+                    phone = phone,
+                    contact = contact,
+                    useRichStyle = useRichStyle,
+                    durationSeconds = durationSeconds
+                )
+            }
+        }
+        return builder.build()
+    }
+
+    private fun configureIncomingNotification(
+        builder: NotificationCompat.Builder,
+        phone: String,
+        contact: ContactUi,
+        useRichStyle: Boolean
+    ) {
+        builder.setCategory(NotificationCompat.CATEGORY_CALL)
+            .setFullScreenIntent(callActivityIntent(phone), true)
+            .setDeleteIntent(
+                callActionIntent(
+                    action = CallActionReceiver.ACTION_DECLINE,
+                    phone = phone
+                )
+            )
+        if (useRichStyle && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setStyle(
                 NotificationCompat.CallStyle.forIncomingCall(
-                    person,
-                    callActionIntent(CallActionReceiver.ACTION_DECLINE),
-                    callActionIntent(CallActionReceiver.ACTION_ACCEPT)
+                    contact.toPerson(),
+                    callActionIntent(CallActionReceiver.ACTION_DECLINE, phone),
+                    callActionIntent(CallActionReceiver.ACTION_ACCEPT, phone)
                 )
             )
         } else {
             builder.addAction(
                 R.drawable.baseline_check_24,
                 "Accept",
-                callActionIntent(CallActionReceiver.ACTION_ACCEPT)
+                callActionIntent(CallActionReceiver.ACTION_ACCEPT, phone)
             )
             builder.addAction(
                 R.drawable.outline_clear_24,
                 "Decline",
-                callActionIntent(CallActionReceiver.ACTION_DECLINE)
+                callActionIntent(CallActionReceiver.ACTION_DECLINE, phone)
             )
         }
-
-        return builder.build()
     }
 
-    override suspend fun buildOutgoingCallNotification(phone: String): Notification {
-        val contact = loadContactUi(phone)
-        val builder = baseCallBuilder(
-            title = "Outgoing Call",
-            content = contact.title,
-            subText = contact.subtitle,
-            largeIcon = contact.avatar,
-            priority = NotificationCompat.PRIORITY_LOW,
-            phone = phone,
-            channelId = ONGOING_CALL_CHANNEL_ID
-        ).apply {
-            setAutoCancel(false)
-            setOngoing(true)
-            setOnlyAlertOnce(true)
-            setCategory(NotificationCompat.CATEGORY_SERVICE)
-            setSilent(true)
+    private fun configureOngoingNotification(
+        builder: NotificationCompat.Builder,
+        phone: String,
+        contact: ContactUi,
+        useRichStyle: Boolean,
+        durationSeconds: Int?
+    ) {
+        builder.setCategory(NotificationCompat.CATEGORY_CALL).setSilent(true)
+            .setOnlyAlertOnce(true)
+        durationSeconds?.takeIf { it > 0 }?.let { duration ->
+            builder.setUsesChronometer(true)
+                .setWhen(System.currentTimeMillis() - duration * 1_000L)
         }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val person = contact.toPerson()
+        if (useRichStyle && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setStyle(
                 NotificationCompat.CallStyle.forOngoingCall(
-                    person,
-                    callActionIntent(CallActionReceiver.ACTION_DECLINE)
+                    contact.toPerson(),
+                    callActionIntent(CallActionReceiver.ACTION_DECLINE, phone)
                 )
             )
         } else {
             builder.addAction(
                 R.drawable.outline_clear_24,
                 "Hang up",
-                callActionIntent(CallActionReceiver.ACTION_DECLINE)
+                callActionIntent(CallActionReceiver.ACTION_DECLINE, phone)
             )
         }
-
-        return builder.build()
     }
 
-    override suspend fun buildOngoingCallNotification(
+    override suspend fun buildCallNotification(
         phone: String,
+        type: CallNotificationType,
         durationSeconds: Int
     ): Notification {
         val contact = loadContactUi(phone)
-        val builder = baseCallBuilder(
-            title = "Ongoing Call",
-            content = contact.title,
-            subText = contact.subtitle,
-            largeIcon = contact.avatar,
-            priority = NotificationCompat.PRIORITY_LOW,
+        return buildCallNotification(
             phone = phone,
-            channelId = ONGOING_CALL_CHANNEL_ID
-        ).apply {
-            setAutoCancel(false)
-            setOngoing(true)
-            setOnlyAlertOnce(true)
-            setCategory(NotificationCompat.CATEGORY_SERVICE)
-            setSilent(true)
-            setUsesChronometer(true)
-            setWhen(System.currentTimeMillis() - durationSeconds * 1000L)
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val person = contact.toPerson()
-            builder.setStyle(
-                NotificationCompat.CallStyle.forOngoingCall(
-                    person,
-                    callActionIntent(CallActionReceiver.ACTION_DECLINE)
-                )
-            )
-        } else {
-            builder.addAction(
-                R.drawable.outline_clear_24,
-                "Hang up",
-                callActionIntent(CallActionReceiver.ACTION_DECLINE)
-            )
-        }
-
-        return builder.build()
+            type = type,
+            contact = contact,
+            useRichStyle = true,
+            durationSeconds = durationSeconds
+        )
     }
 
-    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     override suspend fun showMissedCallNotification(phone: String) {
         val contact = loadContactUi(phone)
+        val notification = NotificationCompat.Builder(context, INCOMING_CALL_CHANNEL_ID)
+            .setSmallIcon(R.drawable.app_logo_short_notification).setContentTitle("Missed Call")
+            .setContentText(contact.title).setSubText(contact.subtitle)
+            .setLargeIcon(contact.avatar ?: defaultAvatar).setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_MISSED_CALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(mainActivityIntent()).build()
+        runCatching {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ActivityCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationManager.notify(MISSED_CALL_NOTIFICATION_ID, notification)
+            }
 
-        val builder = NotificationCompat.Builder(context, INCOMING_CALL_CHANNEL_ID)
-            .setSmallIcon(R.drawable.app_logo_short_notification)
-            .setContentTitle("Missed Call")
-            .setContentText(contact.title)
-            .setSubText(contact.subtitle)
-            .setLargeIcon(contact.avatar)
-            .setAutoCancel(true)
-            .setContentIntent(mainActivityIntent())
-
-        notificationManager.notify(MISSED_CALL_NOTIFICATION_ID, builder.build())
+        }
     }
 
-    // ----------------------------
-    // Internal Helpers
-    // ----------------------------
 
-    private fun createNotificationChannel() {
+    private suspend fun loadContactUi(phone: String): ContactUi {
+        contactUiCache.get(phone)?.let { return it }
+        val contact = runCatching { contactRepository.getContactByPhone(phone) }.getOrNull()
+        val avatar = contact?.image?.let { image ->
+            runCatching {
+                contactPhotoProvider.getContactPhotoBitmap(image)
+            }.getOrNull()
+        }
+        val result = if (contact != null) {
+            ContactUi(
+                title = contact.name.ifBlank { phone.ifBlank { "Unknown" } },
+                subtitle = contact.phone,
+                avatar = avatar
+            )
+        } else {
+            ContactUi(
+                title = phone.ifBlank { "Unknown" },
+                subtitle = null,
+                avatar = null
+            )
+        }
+        contactUiCache.put(phone, result)
+        return result
+    }
+
+
+    private fun createNotificationChannels() {
         val incomingChannel = NotificationChannel(
             INCOMING_CALL_CHANNEL_ID,
             INCOMING_CALL_CHANNEL_NAME,
@@ -224,52 +286,10 @@ class DefaultNotificationController @Inject constructor(
         notificationManager.createNotificationChannel(ongoingChannel)
     }
 
-    private suspend fun loadContactUi(phone: String): ContactUi {
-        contactUiCache[phone]?.let { return it }
-        val contact = contactRepository.getContactByPhone(phone)
-        val contactBitmap = contact?.image?.let { contactPhotoProvider.getContactPhotoBitmap(it) }
-        val ui = if (contact != null) {
-            ContactUi(
-                title = contact.name,
-                subtitle = contact.phone,
-                avatar = contactBitmap
-            )
-        } else {
-            ContactUi(
-                title = "Unknown",
-                subtitle = phone,
-                avatar = defaultAvatar()
-            )
-        }
-        contactUiCache[phone] = ui
-        return ui
-    }
-
-    private fun baseCallBuilder(
-        title: String,
-        content: String,
-        subText: String?,
-        largeIcon: Bitmap?,
-        priority: Int,
-        phone: String,
-        channelId: String
-    ): NotificationCompat.Builder {
-        return NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.app_logo_short_notification)
-            .setContentTitle(title)
-            .setContentText(content)
-            .setSubText(subText)
-            .setLargeIcon(largeIcon)
-            .setOngoing(true)
-            .setPriority(priority)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setContentIntent(callActivityIntent(phone))
-    }
-
     private fun callActivityIntent(phone: String? = null): PendingIntent {
         val intent = Intent(context, CallActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_USER_ACTION
-            phone?.let { putExtra("phone", it) }
+            phone?.let { putExtra(CallActivity.EXTRA_PHONE, it) }
         }
         val requestCode = phone?.hashCode() ?: 0
         return PendingIntent.getActivity(
@@ -279,6 +299,7 @@ class DefaultNotificationController @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
+
 
     private fun mainActivityIntent(): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
@@ -290,11 +311,13 @@ class DefaultNotificationController @Inject constructor(
         )
     }
 
-    private fun callActionIntent(action: String): PendingIntent {
+
+    private fun callActionIntent(action: String, phone: String): PendingIntent {
         val intent = Intent(context, CallActionReceiver::class.java).apply {
             this.action = action
+            putExtra(CallActionReceiver.EXTRA_PHONE, phone)
         }
-        val requestCode = action.hashCode()
+        val requestCode = "$action:$phone".hashCode()
         return PendingIntent.getBroadcast(
             context,
             requestCode,
@@ -303,13 +326,38 @@ class DefaultNotificationController @Inject constructor(
         )
     }
 
-    private fun defaultAvatar(): Bitmap =
-        BitmapFactory.decodeResource(context.resources, R.drawable.profile_pic)
-
     private fun ContactUi.toPerson(): Person {
         return Person.Builder()
             .setName(title)
             .setImportant(true)
             .build()
+    }
+
+    private val CallNotificationType.title: String
+        get() = when (this) {
+            CallNotificationType.INCOMING -> "Incoming Call"
+            CallNotificationType.OUTGOING -> "Outgoing Call"
+            CallNotificationType.ONGOING -> "Ongoing Call"
+        }
+    private val CallNotificationType.priority: Int
+        get() =
+            when (this) {
+                CallNotificationType.INCOMING -> NotificationCompat.PRIORITY_MAX
+                CallNotificationType.OUTGOING, CallNotificationType.ONGOING -> NotificationCompat.PRIORITY_LOW
+            }
+    private val CallNotificationType.channelId: String
+        get() =
+            when (this) {
+                CallNotificationType.INCOMING -> INCOMING_CALL_CHANNEL_ID
+                CallNotificationType.OUTGOING, CallNotificationType.ONGOING -> ONGOING_CALL_CHANNEL_ID
+            }
+
+
+    companion object {
+        private const val INCOMING_CALL_CHANNEL_ID = "AMADZ_INCOMING_CALL_NOTIFICATION_ID"
+        private const val INCOMING_CALL_CHANNEL_NAME = "AMADZ_INCOMING_CALL_NOTIFICATION"
+        private const val ONGOING_CALL_CHANNEL_ID = "AMADZ_ONGOING_CALL_NOTIFICATION_ID"
+        private const val ONGOING_CALL_CHANNEL_NAME = "AMADZ_ONGOING_CALL_NOTIFICATION"
+        private const val MISSED_CALL_NOTIFICATION_ID = 125
     }
 }

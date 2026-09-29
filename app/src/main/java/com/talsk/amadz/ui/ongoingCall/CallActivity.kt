@@ -38,11 +38,11 @@ class CallActivity : ComponentActivity() {
     }
 
     companion object {
-
+        const val EXTRA_PHONE = "phone"
         fun start(context: Context, phone: String) {
             val intent = Intent(context, CallActivity::class.java)
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            intent.putExtra("phone", phone)
+            intent.putExtra(EXTRA_PHONE, phone)
             context.startActivity(intent)
 
         }

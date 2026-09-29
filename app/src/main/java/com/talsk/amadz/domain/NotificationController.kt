@@ -1,10 +1,12 @@
 package com.talsk.amadz.domain
 
 import android.app.Notification
+import com.talsk.amadz.core.CallNotificationType
 
 interface NotificationController {
-    suspend fun buildIncomingCallNotification(phone: String): Notification
-    suspend fun buildOutgoingCallNotification(phone: String): Notification
-    suspend fun buildOngoingCallNotification(phone: String, durationSeconds: Int): Notification
+
+    fun buildForegroundNotification(phone: String, type: CallNotificationType): Notification
+    suspend fun buildCallNotification( phone: String, type: CallNotificationType, durationSeconds: Int = 0 ): Notification
     suspend fun showMissedCallNotification(phone: String)
 }
+

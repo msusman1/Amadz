@@ -12,7 +12,6 @@ interface CallUiEffects {
     fun showOutgoing(phone: String)
     fun showOngoing(phone: String, durationSeconds: Int)
     fun stopCallUi()
-    fun launchCallScreen(phone: String)
     suspend fun showMissedCall(phone: String)
 }
 
@@ -27,6 +26,7 @@ class CallUiEffectsHandler @Inject constructor(
     }
 
     override fun showOutgoing(phone: String) {
+        CallActivity.start(context, phone)
         CallForegroundService.showOutgoing(context, phone)
     }
 
@@ -36,10 +36,6 @@ class CallUiEffectsHandler @Inject constructor(
 
     override fun stopCallUi() {
         CallForegroundService.stop(context)
-    }
-
-    override fun launchCallScreen(phone: String) {
-        CallActivity.start(context, phone)
     }
 
     override suspend fun showMissedCall(phone: String) {

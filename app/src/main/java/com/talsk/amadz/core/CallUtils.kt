@@ -14,22 +14,18 @@ import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.getSystemService
-import java.net.URLDecoder
 
 /**
  * Created by Muhammad Usman : msusman97@gmail.com on 11/17/2023.
  */
 
-
 fun Call.callerName(): String {
-    return this.details.callerDisplayName?.takeIf { it.isNotEmpty() } ?: "Unknown"
-
+    return this.details?.callerDisplayName?.takeIf { it.isNotBlank() } ?: "Unknown"
 }
 
 fun Call.callerPhone(): String {
-    val encodedString = this.details.handle.toString().removePrefix("tel:")
-    return URLDecoder.decode(encodedString, "UTF-8")
-
+    val schemeSpecific = this.details?.handle?.schemeSpecificPart
+    return if (!schemeSpecific.isNullOrBlank()) schemeSpecific else ""
 }
 
 @SuppressLint("MissingPermission")
@@ -68,9 +64,7 @@ fun Context.dial(phone: String, accountId: String? = null) {
         return
     }
     telecomManager?.placeCall(uri, extras)
-
 }
-
 
 fun Int.toSimStateReadable(): String {
     return when (this) {
