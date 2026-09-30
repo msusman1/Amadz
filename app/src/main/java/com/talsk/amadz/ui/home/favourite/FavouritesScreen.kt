@@ -3,6 +3,7 @@ package com.talsk.amadz.ui.home.favourite
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -52,7 +53,9 @@ fun FavouritesScreenInternal(
     onContactDetailCLick: (Contact) -> Unit,
     onRemoveFromFavouriteClick: (Contact) -> Unit,
 ) {
-    LazyColumn {
+    LazyColumn(
+        contentPadding = PaddingValues(bottom = 96.dp)
+    ) {
         item {
             HeaderItem(text = "Favourites")
         }

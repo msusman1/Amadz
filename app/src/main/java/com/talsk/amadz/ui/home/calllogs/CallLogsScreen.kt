@@ -4,6 +4,7 @@ import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.CallLog
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -78,7 +79,8 @@ fun CallLogsScreenInternal(
     }
     LazyPagedColumn(
         modifier = Modifier.fillMaxSize(),
-        pagingItems = callLogs
+        pagingItems = callLogs,
+        contentPadding = PaddingValues(bottom = 96.dp)
     ) {
         items(callLogs.itemCount, key = { index ->
             when (val item = callLogs[index]) {
