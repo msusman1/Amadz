@@ -234,8 +234,12 @@ class DefaultNotificationController @Inject constructor(
         }
         if (showAudioActions) {
             builder.addAction(
-                R.drawable.outline_volume_up_24,
-                if (isSpeakerOn) "Speaker off" else "Speaker on",
+                if (isSpeakerOn) {
+                    R.drawable.outline_volume_off_24
+                } else {
+                    R.drawable.outline_volume_up_24
+                },
+                "Speaker",
                 callActionIntent(
                     action = CallActionReceiver.ACTION_SPEAKER,
                     phone = phone,
@@ -243,7 +247,11 @@ class DefaultNotificationController @Inject constructor(
                 )
             )
             builder.addAction(
-                R.drawable.outline_mic_off_24,
+                if (isMuted) {
+                    R.drawable.outline_mic_24
+                } else {
+                    R.drawable.outline_mic_off_24
+                },
                 if (isMuted) "Unmute" else "Mute",
                 callActionIntent(
                     action = CallActionReceiver.ACTION_MUTE,

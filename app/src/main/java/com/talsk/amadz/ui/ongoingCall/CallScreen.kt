@@ -135,6 +135,7 @@ fun CallScreen(
                 ToggleFab(
                     icon = R.drawable.baseline_dialpad_24,
                     text = "Keyboard",
+                    isActive = keyboardOpen,
                     onAction = {
                         keyboardOpen = it
                     }
@@ -142,16 +143,19 @@ fun CallScreen(
                 ToggleFab(
                     icon = R.drawable.outline_pause_24,
                     text = "Hold",
+                    isActive = uiState is CallState.OnHold,
                     onAction = { onAction(CallAction.Hold(it)) }
                 )
                 ToggleFab(
                     icon = R.drawable.outline_mic_off_24,
                     text = "Mute",
+                    isActive = (uiState as? CallState.Active)?.isMuted == true,
                     onAction = { onAction(CallAction.Mute(it)) }
                 )
                 ToggleFab(
                     icon = R.drawable.outline_volume_up_24,
                     text = "Speaker",
+                    isActive = (uiState as? CallState.Active)?.isSpeakerOn == true,
                     onAction = { onAction(CallAction.Speaker(it)) }
                 )
             }

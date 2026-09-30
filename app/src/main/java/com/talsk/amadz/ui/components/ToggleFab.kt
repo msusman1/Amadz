@@ -13,10 +13,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -25,15 +21,14 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ToggleFab(
-    @DrawableRes icon: Int, text: String, onAction: (Boolean) -> Unit
+    @DrawableRes icon: Int,
+    text: String,
+    isActive: Boolean,
+    onAction: (Boolean) -> Unit
 ) {
-    var isActive: Boolean by remember { mutableStateOf(false) }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Button(
-            onClick = {
-                isActive = !isActive
-                onAction(isActive)
-            },
+            onClick = { onAction(!isActive) },
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (isActive) MaterialTheme.colorScheme.inverseSurface else MaterialTheme.colorScheme.background,
                 contentColor = if (isActive) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onBackground
