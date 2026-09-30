@@ -94,6 +94,7 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.paging)
     implementation(libs.androidx.paging.compose)
+    implementation(libs.androidx.datastore.preferences)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

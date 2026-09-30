@@ -20,6 +20,7 @@ hilt-android = "2.60.1"
 hiltNavigationCompose = "1.4.0"
 paging = "3.5.1"
 paging_compose = "3.5.1"
+datastore = "1.1.7"
 ksp = "2.3.6"
 robolectric = "4.17"
 
@@ -51,6 +52,7 @@ hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hil
 androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 androidx-paging = { module = "androidx.paging:paging-runtime", version.ref = "paging" }
 androidx-paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging_compose" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockitoKotlin" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 

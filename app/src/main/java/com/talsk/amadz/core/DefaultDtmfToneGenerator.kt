@@ -27,7 +27,8 @@ fun Char.toTone(): Int {
 }
 
 class DefaultDtmfToneGenerator @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val dtmfTonePrefs: DtmfTonePrefs
 ) : DtmfToneGenerator {
 
     private var toneGenerator: ToneGenerator? = null
@@ -55,7 +56,8 @@ class DefaultDtmfToneGenerator @Inject constructor(
     }
 
     private fun shouldPlayTone(): Boolean {
-        if (!DtmfTonePrefs.isEnabled(context)) return false
+        val enabled = dtmfTonePrefs.isEnabled.value
+        if (!enabled) return false
 
         val audioManager = context.getSystemService(AudioManager::class.java) ?: return false
         if (audioManager.ringerMode != AudioManager.RINGER_MODE_NORMAL) return false
