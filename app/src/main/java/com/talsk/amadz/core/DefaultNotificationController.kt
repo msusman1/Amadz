@@ -62,24 +62,45 @@ class DefaultNotificationController @Inject constructor(
 
     override fun buildForegroundNotification(
         phone: String,
-        type: CallNotificationType
+        type: CallNotificationType,
+        isMuted: Boolean,
+        isSpeakerOn: Boolean
     ): Notification {
-        val contact = contactUiCache.get(phone)
-        val contactTitle = contact?.title ?: phone.ifBlank { "Unknown" }
-        val contactSubtitle = contact?.subtitle
+        val contact: ContactUi = contactUiCache.get(phone) ?: ContactUi(
+            title = "Unknown",
+            subtitle = phone,
+            avatar = null
+        )
 
         return buildCallNotification(
             phone = phone,
             type = type,
-            contact = ContactUi(
-                title = contactTitle,
-                subtitle = contactSubtitle,
-                avatar = contact?.avatar
-            ),
+            contact = contact,
             useRichStyle = false,
-            durationSeconds = null
+            durationSeconds = null,
+            isMuted = isMuted,
+            isSpeakerOn = isSpeakerOn
         )
 
+    }
+
+    override suspend fun buildCallNotification(
+        phone: String,
+        type: CallNotificationType,
+        durationSeconds: Int,
+        isMuted: Boolean,
+        isSpeakerOn: Boolean
+    ): Notification {
+        val contact = loadContactUi(phone)
+        return buildCallNotification(
+            phone = phone,
+            type = type,
+            contact = contact,
+            useRichStyle = true,
+            durationSeconds = durationSeconds,
+            isMuted = isMuted,
+            isSpeakerOn = isSpeakerOn
+        )
     }
 
     private fun buildCallNotification(
@@ -87,12 +108,14 @@ class DefaultNotificationController @Inject constructor(
         type: CallNotificationType,
         contact: ContactUi,
         useRichStyle: Boolean,
-        durationSeconds: Int?
+        durationSeconds: Int?,
+        isMuted: Boolean,
+        isSpeakerOn: Boolean
     ): Notification {
         val builder = NotificationCompat.Builder(context, type.channelId)
             .setSmallIcon(R.drawable.app_logo)
             .setContentTitle(type.title)
-            .setContentText(contact.title)
+            .setContentText(contact.displayDetails)
             .setSubText(contact.subtitle)
             .setLargeIcon(contact.avatar ?: defaultAvatar)
             .setOngoing(true)
@@ -116,7 +139,10 @@ class DefaultNotificationController @Inject constructor(
                     phone = phone,
                     contact = contact,
                     useRichStyle = useRichStyle,
-                    durationSeconds = durationSeconds
+                    durationSeconds = durationSeconds,
+                    isMuted = isMuted,
+                    isSpeakerOn = isSpeakerOn,
+                    showAudioActions = false
                 )
             }
 
@@ -126,7 +152,11 @@ class DefaultNotificationController @Inject constructor(
                     phone = phone,
                     contact = contact,
                     useRichStyle = useRichStyle,
-                    durationSeconds = durationSeconds
+                    durationSeconds = durationSeconds,
+                    isMuted = isMuted,
+                    isSpeakerOn = isSpeakerOn,
+                    showAudioActions = true,
+                    showChronometer = true
                 )
             }
         }
@@ -174,13 +204,19 @@ class DefaultNotificationController @Inject constructor(
         phone: String,
         contact: ContactUi,
         useRichStyle: Boolean,
-        durationSeconds: Int?
+        durationSeconds: Int?,
+        isMuted: Boolean,
+        isSpeakerOn: Boolean,
+        showAudioActions: Boolean,
+        showChronometer: Boolean = false
     ) {
         builder.setCategory(NotificationCompat.CATEGORY_CALL).setSilent(true)
             .setOnlyAlertOnce(true)
-        durationSeconds?.takeIf { it > 0 }?.let { duration ->
+        if (showChronometer) {
             builder.setUsesChronometer(true)
-                .setWhen(System.currentTimeMillis() - duration * 1_000L)
+                .setWhen(
+                    System.currentTimeMillis() - (durationSeconds ?: 0).coerceAtLeast(0) * 1_000L
+                )
         }
         if (useRichStyle && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setStyle(
@@ -196,22 +232,29 @@ class DefaultNotificationController @Inject constructor(
                 callActionIntent(CallActionReceiver.ACTION_DECLINE, phone)
             )
         }
+        if (showAudioActions) {
+            builder.addAction(
+                R.drawable.outline_volume_up_24,
+                if (isSpeakerOn) "Speaker off" else "Speaker on",
+                callActionIntent(
+                    action = CallActionReceiver.ACTION_SPEAKER,
+                    phone = phone,
+                    enabled = !isSpeakerOn
+                )
+            )
+            builder.addAction(
+                R.drawable.outline_mic_off_24,
+                if (isMuted) "Unmute" else "Mute",
+                callActionIntent(
+                    action = CallActionReceiver.ACTION_MUTE,
+                    phone = phone,
+                    enabled = !isMuted
+                )
+            )
+
+        }
     }
 
-    override suspend fun buildCallNotification(
-        phone: String,
-        type: CallNotificationType,
-        durationSeconds: Int
-    ): Notification {
-        val contact = loadContactUi(phone)
-        return buildCallNotification(
-            phone = phone,
-            type = type,
-            contact = contact,
-            useRichStyle = true,
-            durationSeconds = durationSeconds
-        )
-    }
 
     override suspend fun showMissedCallNotification(phone: String) {
         val contact = loadContactUi(phone)
@@ -246,14 +289,14 @@ class DefaultNotificationController @Inject constructor(
         }
         val result = if (contact != null) {
             ContactUi(
-                title = contact.name.ifBlank { phone.ifBlank { "Unknown" } },
-                subtitle = contact.phone,
+                title = contact.name.ifBlank { "Unknown" },
+                subtitle = contact.phone.ifBlank { phone },
                 avatar = avatar
             )
         } else {
             ContactUi(
-                title = phone.ifBlank { "Unknown" },
-                subtitle = null,
+                title = "Unknown",
+                subtitle = phone,
                 avatar = null
             )
         }
@@ -312,12 +355,17 @@ class DefaultNotificationController @Inject constructor(
     }
 
 
-    private fun callActionIntent(action: String, phone: String): PendingIntent {
+    private fun callActionIntent(
+        action: String,
+        phone: String,
+        enabled: Boolean? = null
+    ): PendingIntent {
         val intent = Intent(context, CallActionReceiver::class.java).apply {
             this.action = action
             putExtra(CallActionReceiver.EXTRA_PHONE, phone)
+            enabled?.let { putExtra(CallActionReceiver.EXTRA_ENABLED, it) }
         }
-        val requestCode = "$action:$phone".hashCode()
+        val requestCode = "$action:$phone:$enabled".hashCode()
         return PendingIntent.getBroadcast(
             context,
             requestCode,
@@ -339,6 +387,9 @@ class DefaultNotificationController @Inject constructor(
             CallNotificationType.OUTGOING -> "Outgoing Call"
             CallNotificationType.ONGOING -> "Ongoing Call"
         }
+
+    private val ContactUi.displayDetails: String
+        get() = subtitle?.takeIf(String::isNotBlank) ?: title
     private val CallNotificationType.priority: Int
         get() =
             when (this) {

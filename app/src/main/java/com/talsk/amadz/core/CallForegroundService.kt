@@ -12,7 +12,9 @@ import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.app.ServiceCompat
+import com.talsk.amadz.domain.CallOrchestrator
 import com.talsk.amadz.domain.NotificationController
+import com.talsk.amadz.domain.entity.CallState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +30,9 @@ class CallForegroundService : Service() {
 
     @Inject
     lateinit var notificationController: NotificationController
+
+    @Inject
+    lateinit var callOrchestrator: CallOrchestrator
 
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(serviceJob + Dispatchers.Main.immediate)
@@ -62,17 +67,28 @@ class CallForegroundService : Service() {
             return
         }
         val durationSeconds = intent.getIntExtra(EXTRA_DURATION_SECONDS, 0)
+        val activeCallState = callOrchestrator.callState.value as? CallState.Active
+        val isMuted = activeCallState?.isMuted ?: false
+        val isSpeakerOn = activeCallState?.isSpeakerOn ?: false
 
         // This notification must be created synchronously/cheaply so the * service can enter the foreground immediately.
         val generation = ++notificationGeneration
         val fastNotification = notificationController.buildForegroundNotification(
             phone = phone,
-            type = type
+            type = type,
+            isMuted = isMuted,
+            isSpeakerOn = isSpeakerOn
         )
         startCallForeground(fastNotification) /* * Contact/photo lookup happens asynchronously. */
         serviceScope.launch {
             val richNotification = runCatching {
-                notificationController.buildCallNotification(phone, type, durationSeconds)
+                notificationController.buildCallNotification(
+                    phone = phone,
+                    type = type,
+                    durationSeconds = activeCallState?.duration ?: durationSeconds,
+                    isMuted = isMuted,
+                    isSpeakerOn = isSpeakerOn
+                )
             }.getOrElse { throwable ->
                 Log.w(TAG, "Failed to build rich $type notification", throwable)
                 return@launch

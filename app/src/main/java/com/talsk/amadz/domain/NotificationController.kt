@@ -5,8 +5,20 @@ import com.talsk.amadz.core.CallNotificationType
 
 interface NotificationController {
 
-    fun buildForegroundNotification(phone: String, type: CallNotificationType): Notification
-    suspend fun buildCallNotification( phone: String, type: CallNotificationType, durationSeconds: Int = 0 ): Notification
+    fun buildForegroundNotification(
+        phone: String,
+        type: CallNotificationType,
+        isMuted: Boolean = false,
+        isSpeakerOn: Boolean = false
+    ): Notification
+
+    suspend fun buildCallNotification(
+        phone: String,
+        type: CallNotificationType,
+        durationSeconds: Int = 0,
+        isMuted: Boolean = false,
+        isSpeakerOn: Boolean = false
+    ): Notification
+
     suspend fun showMissedCallNotification(phone: String)
 }
-

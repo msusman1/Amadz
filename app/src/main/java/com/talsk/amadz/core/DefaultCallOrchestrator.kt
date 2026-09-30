@@ -79,6 +79,7 @@ class DefaultCallOrchestrator @Inject constructor(
                 _callState.update { state ->
                     if (state is CallState.Active) state.copy(isMuted = callAction.enabled) else state
                 }
+                refreshOngoingNotification()
             }
 
             is CallAction.Speaker -> {
@@ -87,10 +88,19 @@ class DefaultCallOrchestrator @Inject constructor(
                 _callState.update { state ->
                     if (state is CallState.Active) state.copy(isSpeakerOn = callAction.enabled) else state
                 }
+                refreshOngoingNotification()
             }
 
             is CallAction.StartDialTone -> currentCall?.playDtmfTone(callAction.char)
             CallAction.StopDialTone -> currentCall?.stopDtmfTone()
+        }
+    }
+
+    private fun refreshOngoingNotification() {
+        val activeCall = _callState.value as? CallState.Active ?: return
+        val phone = currentCall?.callerPhone().orEmpty()
+        if (phone.isNotBlank()) {
+            callUiEffects.showOngoing(phone, activeCall.duration)
         }
     }
 
