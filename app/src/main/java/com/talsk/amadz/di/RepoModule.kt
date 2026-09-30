@@ -7,8 +7,7 @@ import com.talsk.amadz.core.DefaultDtmfToneGenerator
 import com.talsk.amadz.core.DefaultNotificationController
 import com.talsk.amadz.data.BlockedNumberRepositoryImpl
 import com.talsk.amadz.data.CallLogRepositoryImpl
-import com.talsk.amadz.data.ContactDetailProviderImpl
-import com.talsk.amadz.data.ContactPhotoProviderImpl
+import com.talsk.amadz.data.ContactPhotoBitmapProviderImpl
 import com.talsk.amadz.data.ContactsRepositoryImpl
 import com.talsk.amadz.data.SimInfoProviderImpl
 import com.talsk.amadz.domain.CallOrchestrator
@@ -16,8 +15,7 @@ import com.talsk.amadz.domain.DtmfToneGenerator
 import com.talsk.amadz.domain.NotificationController
 import com.talsk.amadz.domain.repo.BlockedNumberRepository
 import com.talsk.amadz.domain.repo.CallLogRepository
-import com.talsk.amadz.domain.repo.ContactDetailProvider
-import com.talsk.amadz.domain.repo.ContactPhotoProvider
+import com.talsk.amadz.domain.repo.ContactPhotoBitmapProvider
 import com.talsk.amadz.domain.repo.ContactRepository
 import com.talsk.amadz.domain.repo.SimInfoProvider
 import dagger.Binds
@@ -68,14 +66,8 @@ abstract class RepoModule {
     @Binds
     @Singleton
     abstract fun bindContactPhotoProvider(
-        impl: ContactPhotoProviderImpl
-    ): ContactPhotoProvider
-
-    @Binds
-    @Singleton
-    abstract fun bindContactDetailProvider(
-        impl: ContactDetailProviderImpl
-    ): ContactDetailProvider
+        impl: ContactPhotoBitmapProviderImpl
+    ): ContactPhotoBitmapProvider
 
     @Binds
     @Singleton

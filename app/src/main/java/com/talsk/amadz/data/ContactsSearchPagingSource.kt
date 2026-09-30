@@ -30,6 +30,7 @@ class ContactsSearchPagingSource @Inject constructor(
                     limit = PAGE_SIZE,
                     offset = offset
                 )
+
                 val callLogContacts = callLogRepository.searchCallLogContacts(
                     query = query,
                     limit = PAGE_SIZE,

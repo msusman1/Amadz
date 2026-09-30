@@ -1,7 +1,6 @@
 package com.talsk.amadz.data
 
 import android.content.Context
-import android.telephony.PhoneNumberUtils
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.Preferences
@@ -10,6 +9,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.talsk.amadz.domain.entity.BlockedNumber
 import com.talsk.amadz.domain.repo.BlockedNumberRepository
+import com.talsk.amadz.util.PhoneUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -26,7 +26,8 @@ private val Context.blockedNumbersDataStore: DataStore<Preferences> by preferenc
 
 @Singleton
 class BlockedNumberRepositoryImpl @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val phoneUtils: PhoneUtils
 ) : BlockedNumberRepository {
 
     private val exactNumbersKey = stringSetPreferencesKey(KEY_BLOCKED_NUMBERS)
@@ -86,7 +87,7 @@ class BlockedNumberRepositoryImpl @Inject constructor(
     }
 
     private fun String.toCanonicalNumber(): String? {
-        val normalized = PhoneNumberUtils.normalizeNumber(this).orEmpty()
+        val normalized = phoneUtils.normalizeNumber(this).orEmpty()
         val digits = normalized.filter { it.isDigit() }
         if (digits.isBlank()) return null
         return if (digits.length > 10) digits.takeLast(10) else digits

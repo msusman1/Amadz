@@ -19,7 +19,7 @@ import androidx.core.app.Person
 import com.talsk.amadz.MainActivity
 import com.talsk.amadz.R
 import com.talsk.amadz.domain.NotificationController
-import com.talsk.amadz.domain.repo.ContactPhotoProvider
+import com.talsk.amadz.domain.repo.ContactPhotoBitmapProvider
 import com.talsk.amadz.domain.repo.ContactRepository
 import com.talsk.amadz.ui.ongoingCall.CallActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -43,7 +43,7 @@ data class ContactUi(
 class DefaultNotificationController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val contactRepository: ContactRepository,
-    private val contactPhotoProvider: ContactPhotoProvider
+    private val contactPhotoBitmapProvider: ContactPhotoBitmapProvider
 ) : NotificationController {
 
     private val notificationManager = NotificationManagerCompat.from(context)
@@ -291,9 +291,7 @@ class DefaultNotificationController @Inject constructor(
         contactUiCache.get(phone)?.let { return it }
         val contact = runCatching { contactRepository.getContactByPhone(phone) }.getOrNull()
         val avatar = contact?.image?.let { image ->
-            runCatching {
-                contactPhotoProvider.getContactPhotoBitmap(image)
-            }.getOrNull()
+            runCatching { contactPhotoBitmapProvider.getContactPhotoBitmap(image) }.getOrNull()
         }
         val result = if (contact != null) {
             ContactUi(
