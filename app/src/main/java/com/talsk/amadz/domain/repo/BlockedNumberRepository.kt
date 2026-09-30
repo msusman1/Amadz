@@ -1,8 +1,13 @@
 package com.talsk.amadz.domain.repo
 
+import com.talsk.amadz.domain.entity.BlockedNumber
+import kotlinx.coroutines.flow.Flow
+
 interface BlockedNumberRepository {
-    fun isBlocked(phone: String): Boolean
-    fun getBlockedNumbers(): List<String>
-    fun block(phone: String)
-    fun unblock(phone: String)
+    suspend fun isBlocked(phone: String): Boolean
+    fun getBlockedNumbers(): Flow<List<BlockedNumber>>
+    suspend fun block(phone: String)
+    suspend fun blockPattern(pattern: String)
+    suspend fun unblock(phone: String)
+    suspend fun unblock(blockedNumber: BlockedNumber)
 }

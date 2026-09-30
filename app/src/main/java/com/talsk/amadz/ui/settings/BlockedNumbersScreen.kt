@@ -2,6 +2,7 @@ package com.talsk.amadz.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -29,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.talsk.amadz.domain.entity.BlockedNumber
+import java.util.regex.PatternSyntaxException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +42,8 @@ fun BlockedNumbersScreen(
 ) {
     val blockedNumbers by vm.blockedNumbers.collectAsStateWithLifecycle()
     var newNumber by rememberSaveable { mutableStateOf("") }
+    var isRegex by rememberSaveable { mutableStateOf(false) }
+    var inputError by rememberSaveable { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -65,18 +71,60 @@ fun BlockedNumbersScreen(
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = newNumber,
-                onValueChange = { newNumber = it },
+                onValueChange = {
+                    newNumber = it
+                    inputError = null
+                },
                 singleLine = true,
-                label = { Text("Phone number") }
+                label = { Text(if (isRegex) "Phone number regex" else "Phone number") },
+                supportingText = {
+                    Text(
+                        inputError ?: if (isRegex) {
+                            "Regex matches normalized phone digits."
+                        } else {
+                            "Numbers are normalized before matching."
+                        }
+                    )
+                },
+                isError = inputError != null
             )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = !isRegex,
+                    onClick = {
+                        isRegex = false
+                        inputError = null
+                    },
+                    label = { Text("Exact number") }
+                )
+                FilterChip(
+                    selected = isRegex,
+                    onClick = {
+                        isRegex = true
+                        inputError = null
+                    },
+                    label = { Text("Regex") }
+                )
+            }
             Button(
                 onClick = {
-                    vm.addBlockedNumber(newNumber.trim())
-                    newNumber = ""
+                    val value = newNumber.trim()
+                    if (isRegex) {
+                        try {
+                            Regex(value)
+                            vm.addBlockedPattern(value)
+                            newNumber = ""
+                        } catch (exception: PatternSyntaxException) {
+                            inputError = exception.description
+                        }
+                    } else {
+                        vm.addBlockedNumber(value)
+                        newNumber = ""
+                    }
                 },
                 enabled = newNumber.trim().isNotEmpty()
             ) {
-                Text("Add blocked number")
+                Text(if (isRegex) "Add regex block" else "Add blocked number")
             }
 
             if (blockedNumbers.isEmpty()) {
@@ -86,11 +134,17 @@ fun BlockedNumbersScreen(
                 )
             } else {
                 LazyColumn {
-                    items(blockedNumbers) { phone ->
+                    items(blockedNumbers) { blockedNumber ->
                         ListItem(
-                            headlineContent = { Text(phone) },
+                            headlineContent = { Text(blockedNumber.value) },
+                            supportingContent = {
+                                Text(
+                                    if (blockedNumber.type == BlockedNumber.Type.REGEX) "Regex"
+                                    else "Exact number"
+                                )
+                            },
                             trailingContent = {
-                                IconButton(onClick = { vm.removeBlockedNumber(phone) }) {
+                                IconButton(onClick = { vm.removeBlockedNumber(blockedNumber) }) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
                                         contentDescription = "Remove blocked number"

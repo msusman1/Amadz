@@ -5,6 +5,7 @@ import android.telecom.Call.Callback
 import android.telecom.DisconnectCause
 import android.telecom.VideoProfile
 import android.util.Log
+import java.io.IOException
 import com.talsk.amadz.App
 import com.talsk.amadz.di.ApplicationScope
 import com.talsk.amadz.domain.CallAction
@@ -231,12 +232,23 @@ class DefaultCallOrchestrator @Inject constructor(
         when {
             isOutgoing -> callUiEffects.showOutgoing(phone)
             isIncomingRinging -> {
-                if (blockedNumberRepository.isBlocked(phone)) {
-                    onAction(CallAction.Hangup)
-                    callUiEffects.stopCallUi()
-                    return
+                appScope.launch {
+                    val isBlocked = try {
+                        blockedNumberRepository.isBlocked(phone)
+                    } catch (exception: IOException) {
+                        Log.e(TAG, "Unable to read blocked numbers; allowing incoming call", exception)
+                        false
+                    }
+                    if (call !== currentCall || call.stateCompat != Call.STATE_RINGING) {
+                        return@launch
+                    }
+                    if (isBlocked) {
+                        onAction(CallAction.Hangup)
+                        callUiEffects.stopCallUi()
+                    } else {
+                        callUiEffects.showIncoming(phone)
+                    }
                 }
-                callUiEffects.showIncoming(phone)
             }
         }
     }

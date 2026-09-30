@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -71,13 +72,21 @@ class CallLogHistoryViewModel @Inject constructor(
     fun toggleBlocked() {
         val currentPhone = _uiState.value.phone
         if (currentPhone.isBlank()) return
-        val blocked = blockedNumberRepository.isBlocked(currentPhone)
-        if (blocked) {
-            blockedNumberRepository.unblock(currentPhone)
-        } else {
-            blockedNumberRepository.block(currentPhone)
+
+        viewModelScope.launch {
+            val currentlyBlocked = blockedNumberRepository.isBlocked(currentPhone)
+            val nextBlockedState = !currentlyBlocked
+
+            if (currentlyBlocked) {
+                blockedNumberRepository.unblock(currentPhone)
+            } else {
+                blockedNumberRepository.block(currentPhone)
+            }
+
+            _uiState.update { currentState ->
+                currentState.copy(isBlocked = nextBlockedState)
+            }
         }
-        _uiState.value = _uiState.value.copy(isBlocked = !blocked)
     }
 }
 
