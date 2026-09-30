@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -105,7 +106,9 @@ fun CallScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface).statusBarsPadding(),
+            .background(MaterialTheme.colorScheme.surface)
+            .statusBarsPadding()
+            .navigationBarsPadding(),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         CallHeader(
@@ -155,7 +158,11 @@ fun CallScreen(
                 ToggleFab(
                     icon = R.drawable.outline_volume_up_24,
                     text = "Speaker",
-                    isActive = (uiState as? CallState.Active)?.isSpeakerOn == true,
+                    isActive = when (uiState) {
+                        is CallState.Active -> uiState.isSpeakerOn
+                        is CallState.Ringing -> uiState.isSpeakerOn
+                        else -> false
+                    },
                     onAction = { onAction(CallAction.Speaker(it)) }
                 )
             }

@@ -3,6 +3,7 @@ package com.talsk.amadz.ui.callLogHistory
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -217,10 +218,19 @@ private fun CallLogHistoryItem(log: CallLogData) {
             Text(text = log.callTypeReadable())
         },
         supportingContent = {
-            Text(
-                text = log.time.toReadableFormat(),
-                color = if (log.callLogType == CallLogType.MISSED || log.callLogType == CallLogType.REJECTED) MaterialTheme.colorScheme.error else Color.Unspecified
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = log.time.toReadableFormat(),
+                    color = if (log.callLogType == CallLogType.MISSED || log.callLogType == CallLogType.REJECTED) MaterialTheme.colorScheme.error else Color.Unspecified
+                )
+                log.simLabel()?.let { simLabel ->
+                    Text(
+                        text = simLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         },
         trailingContent = {
             if (log.callLogType == CallLogType.OUTGOING || log.callLogType == CallLogType.INCOMING) {

@@ -213,12 +213,12 @@ class CallLogRepositoryImpl @Inject constructor(
             buildList {
                 while (cursor.moveToNext()) {
                     val phone = cursor.getString(numberColumnIndex)
-                    var simSlot: Int? = null
-                    if (simsInfo.size > 1) {
-                        simSlot = simsInfo
-                            .find { it.accountId == cursor.getStringOrNull(accountIdColumnIndex) }
-                            ?.simSlotIndex ?: -1
-                    }
+                    val callSim = if (simsInfo.size > 1) {
+                        simsInfo.find {
+                            it.accountId == cursor.getStringOrNull(accountIdColumnIndex)
+                        }
+                    } else null
+                    val simSlot = if (simsInfo.size > 1) callSim?.simSlotIndex ?: -1 else null
                     val contactIdFromLog = cursor.getStringOrNull(cachedLookupUriIndex)
                         ?.toUri()
                         ?.let { uri -> runCatching { ContentUris.parseId(uri) }.getOrNull() }
@@ -237,6 +237,7 @@ class CallLogRepositoryImpl @Inject constructor(
                             callDuration = cursor.getLong(durationColumnIndex),
                             callLogType = CallLogType.fromInt(cursor.getInt(phoneTypeColumnIndex)),
                             simSlot = simSlot,
+                            simDisplayName = callSim?.displayName,
                             image = cursor.getStringOrNull(cachedPhotoUriIndex)?.toUri()
                                 ?: contactPhotoProvider.getContactPhotoUri(phone)
                         )

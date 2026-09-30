@@ -254,9 +254,9 @@ fun CallLogItem(
                     text = logData.time.toReadableFormat(),
                     color = if (logData.callLogType == CallLogType.MISSED || logData.callLogType == CallLogType.REJECTED) MaterialTheme.colorScheme.error else Color.Unspecified
                 )
-                if (logData.simSlot != null && logData.simSlot >= 0) {
+                logData.simLabel()?.let { simLabel ->
                     Text(
-                        text = "SIM ${logData.simSlot + 1}",
+                        text = simLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 8.dp)
@@ -275,5 +275,4 @@ fun CallLogItem(
 
         })
 }
-
 

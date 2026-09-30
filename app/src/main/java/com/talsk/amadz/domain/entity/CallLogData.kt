@@ -14,8 +14,14 @@ data class CallLogData(
     val callLogType: CallLogType,
     val time: Date,
     val callDuration: Long,
-    val simSlot: Int?
+    val simSlot: Int?,
+    val simDisplayName: String? = null
 ) {
+    fun simLabel(): String? {
+        if (simSlot == null || simSlot < 0) return null
+        return simDisplayName?.takeIf(String::isNotBlank) ?: "SIM ${simSlot + 1}"
+    }
+
     fun callDurationReadable(): String {
         if (callDuration <= 0L) return "0s"
 

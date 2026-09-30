@@ -5,7 +5,8 @@ sealed class CallState {
     object Idle : CallState()
 
     data class Ringing(
-        val direction: CallDirection
+        val direction: CallDirection,
+        val isSpeakerOn: Boolean = false
     ) : CallState()
 
     object Connecting : CallState()

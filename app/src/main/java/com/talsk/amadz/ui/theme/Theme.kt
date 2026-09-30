@@ -102,12 +102,12 @@ fun AmadzTheme(
         else -> LightColors
     }
     val view = LocalView.current
+//    val navColor = colorScheme.primary.copy(alpha = 0.08f).compositeOver(colorScheme.surface.copy()).toArgb()
+    val navColor = MaterialTheme.colorScheme.surfaceVariant.toArgb()
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.navigationBarColor =
-                colorScheme.primary.copy(alpha = 0.08f).compositeOver(colorScheme.surface.copy())
-                    .toArgb()
+            window.navigationBarColor = navColor
             window.statusBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
             WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars =

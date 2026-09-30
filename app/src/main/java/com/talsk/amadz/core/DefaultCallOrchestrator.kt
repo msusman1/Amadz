@@ -86,7 +86,11 @@ class DefaultCallOrchestrator @Inject constructor(
                 speakerOn = callAction.enabled
                 callServiceAudioDelegate?.setSpeaker(callAction.enabled)
                 _callState.update { state ->
-                    if (state is CallState.Active) state.copy(isSpeakerOn = callAction.enabled) else state
+                    when (state) {
+                        is CallState.Active -> state.copy(isSpeakerOn = callAction.enabled)
+                        is CallState.Ringing -> state.copy(isSpeakerOn = callAction.enabled)
+                        else -> state
+                    }
                 }
                 refreshOngoingNotification()
             }
@@ -166,11 +170,17 @@ class DefaultCallOrchestrator @Inject constructor(
             }
 
             Call.STATE_DIALING -> {
-                _callState.value = CallState.Ringing(CallDirection.OUTGOING)
+                _callState.value = CallState.Ringing(
+                    direction = CallDirection.OUTGOING,
+                    isSpeakerOn = speakerOn
+                )
             }
 
             Call.STATE_RINGING -> {
-                _callState.value = CallState.Ringing(CallDirection.INCOMING)
+                _callState.value = CallState.Ringing(
+                    direction = CallDirection.INCOMING,
+                    isSpeakerOn = speakerOn
+                )
             }
 
             Call.STATE_HOLDING -> {
