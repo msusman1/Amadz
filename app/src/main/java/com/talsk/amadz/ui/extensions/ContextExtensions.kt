@@ -20,3 +20,10 @@ fun Context.openContactAddScreen(phone: String) {
     intent.putExtra(ContactsContract.Intents.Insert.PHONE, phone)
     startActivity(intent)
 }
+
+fun Context.openContactAddToExistingScreen(phone: String) {
+    val intent = Intent(Intent.ACTION_INSERT_OR_EDIT)
+    intent.type = ContactsContract.Contacts.CONTENT_ITEM_TYPE
+    intent.putExtra(ContactsContract.Intents.Insert.PHONE, phone)
+    startActivity(intent)
+}

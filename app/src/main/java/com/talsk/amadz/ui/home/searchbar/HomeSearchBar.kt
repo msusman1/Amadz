@@ -42,6 +42,7 @@ import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.ui.components.ContactItem
 import com.talsk.amadz.ui.components.LazyPagedColumn
 import com.talsk.amadz.ui.extensions.openContactAddScreen
+import com.talsk.amadz.ui.extensions.openContactAddToExistingScreen
 import com.talsk.amadz.ui.extensions.openContactDetailScreen
 import com.talsk.amadz.ui.home.HeaderItem
 import com.talsk.amadz.ui.home.KeyPad
@@ -213,6 +214,10 @@ private fun SearchResults(
     Column(modifier = modifier) {
         if (dialPadPhone.isNotEmpty()) {
             NewContactHeader({ context.openContactAddScreen(dialPadPhone) }, dialPadPhone)
+            ExistingContactHeader(
+                { context.openContactAddToExistingScreen(dialPadPhone) },
+                dialPadPhone
+            )
         }
         if (filteredContacts.itemCount > 0) {
             HeaderItem(text = "Suggestions")
@@ -257,6 +262,27 @@ private fun NewContactHeader(
         headlineContent = {
             Text(
                 text = "Create new contact", color = MaterialTheme.colorScheme.primary
+            )
+        },
+    )
+}
+
+@Composable
+private fun ExistingContactHeader(
+    onContactAddClicked: (String) -> Unit, dialPhone: String
+) {
+    ListItem(
+        modifier = Modifier.clickable { onContactAddClicked(dialPhone) },
+        leadingContent = {
+            Icon(
+                painter = painterResource(id = R.drawable.baseline_person_add_alt_24),
+                tint = MaterialTheme.colorScheme.primary,
+                contentDescription = "Add to existing contact"
+            )
+        },
+        headlineContent = {
+            Text(
+                text = "Add to existing contact", color = MaterialTheme.colorScheme.primary
             )
         },
     )
