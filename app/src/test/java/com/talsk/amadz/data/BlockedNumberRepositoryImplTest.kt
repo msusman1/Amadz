@@ -3,6 +3,7 @@ package com.talsk.amadz.data
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.talsk.amadz.domain.entity.BlockedNumber
+import com.talsk.amadz.util.PhoneUtils
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -27,7 +28,7 @@ class BlockedNumberRepositoryImplTest {
                 .putStringSet("blocked_numbers", setOf("2025550123"))
                 .commit()
 
-            val repository = BlockedNumberRepositoryImpl(context)
+            val repository = BlockedNumberRepositoryImpl(context, PhoneUtils(context))
 
             assertTrue(repository.isBlocked("+1 (202) 555-0123"))
             assertFalse(repository.isBlocked("2025550199"))

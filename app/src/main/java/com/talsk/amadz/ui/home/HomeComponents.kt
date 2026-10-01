@@ -235,7 +235,9 @@ fun CallLogItem(
                 onClick = { onContactDetailClick(logData) }
             )
         },
-        headlineContent = { Text(text = logData.name.takeIf { it.isNotEmpty() } ?: logData.phone) },
+        headlineContent = {
+            Text(text = logData.name.takeIf { it.isNotEmpty() } ?: logData.displayPhone)
+        },
         supportingContent = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

@@ -7,6 +7,7 @@ import com.talsk.amadz.domain.repo.BlockedNumberRepository
 import com.talsk.amadz.domain.repo.CallLogRepository
 import com.talsk.amadz.domain.repo.ContactRepository
 import com.talsk.amadz.ui.home.calllogs.CallLogUiModel
+import com.talsk.amadz.util.PhoneUtils
 import com.talsk.amadz.util.startOfDay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,8 @@ import javax.inject.Inject
 class CallLogHistoryViewModel @Inject constructor(
     private val callLogRepository: CallLogRepository,
     private val contactRepository: ContactRepository,
-    private val blockedNumberRepository: BlockedNumberRepository
+    private val blockedNumberRepository: BlockedNumberRepository,
+    private val phoneUtils: PhoneUtils,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CallLogHistoryUiState())
@@ -53,6 +55,7 @@ class CallLogHistoryViewModel @Inject constructor(
                 isLoading = false,
                 title = contact?.name ?: cachedName.ifBlank { phone },
                 phone = contact?.phone ?: phone,
+                displayPhone = phoneUtils.formatForDisplay(phone),
                 logs = groupedLogs,
                 isBlocked = blockedNumberRepository.isBlocked(contact?.phone ?: phone),
                 isSavedContact = contact != null
@@ -94,6 +97,7 @@ data class CallLogHistoryUiState(
     val isLoading: Boolean = true,
     val title: String = "",
     val phone: String = "",
+    val displayPhone: String = "",
     val logs: List<CallLogUiModel> = emptyList(),
     val isBlocked: Boolean = false,
     val isSavedContact: Boolean = false

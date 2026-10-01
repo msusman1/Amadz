@@ -91,7 +91,7 @@ private fun CallLogHistoryScreenInternal(
                     Column {
                         Text(text = state.title, style = MaterialTheme.typography.titleMedium)
                         if (state.title != state.phone) {
-                            Text(text = state.phone, style = MaterialTheme.typography.bodyMedium)
+                            Text(text = state.displayPhone, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 },

@@ -19,7 +19,8 @@ import com.talsk.amadz.domain.entity.Contact
 fun ContactItem(
     contact: Contact,
     onContactDetailClick: (Contact) -> Unit,
-    onCallClick: (Contact) -> Unit, ) {
+    onCallClick: (Contact) -> Unit,
+) {
     ListItem(
         modifier = Modifier.clickable { onContactDetailClick(contact) },
         leadingContent = {
@@ -29,7 +30,7 @@ fun ContactItem(
                 onClick = { onContactDetailClick(contact) })
         },
         headlineContent = { Text(text = contact.name) },
-        supportingContent = { Text(text = contact.phone) },
+        supportingContent = { Text(text = if (contact.displayPhone.isNotBlank()) contact.displayPhone else contact.phone) },
         trailingContent = {
             Row {
                 IconButton(onClick = { onCallClick(contact) }) {

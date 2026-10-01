@@ -15,7 +15,8 @@ data class CallLogData(
     val time: Date,
     val callDuration: Long,
     val simSlot: Int?,
-    val simDisplayName: String? = null
+    val simDisplayName: String? = null,
+    val displayPhone: String = phone
 ) {
     fun simLabel(): String? {
         if (simSlot == null || simSlot < 0) return null

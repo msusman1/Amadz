@@ -14,23 +14,47 @@ class PhoneUtils @Inject constructor(
 ) {
     val telephonyManager = getSystemService(context, TelephonyManager::class.java)
 
+    fun formatForDisplay(phone: String): String {
+        return formatForDisplay(phone, defaultRegion())
+    }
+
     fun normalizeNumber(phone: String): String? {
         val phoneUtil = PhoneNumberUtil.getInstance()
 
         // Get the user's default country code
-        val defaultRegion = telephonyManager?.simCountryIso?.uppercase(Locale.getDefault())
-            ?: telephonyManager?.networkCountryIso?.uppercase(Locale.getDefault())
-            ?: "US" // Default to "US" if unknown
-
         return try {
             // Parse the phone number
-            val numberProto = phoneUtil.parse(phone, defaultRegion)
+            val numberProto = phoneUtil.parse(phone, defaultRegion())
 
             // Format it into E.164 format (+<country_code><number>)
             phoneUtil.format(numberProto, PhoneNumberUtil.PhoneNumberFormat.E164)
         } catch (e: NumberParseException) {
             e.printStackTrace()
             null // Return null if the phone number is invalid
+        }
+    }
+
+    private fun defaultRegion(): String =
+        telephonyManager?.simCountryIso?.takeIf { it.isNotBlank() }
+            ?.uppercase(Locale.getDefault())
+            ?: telephonyManager?.networkCountryIso?.takeIf { it.isNotBlank() }
+                ?.uppercase(Locale.getDefault())
+            ?: "US"
+
+    companion object {
+        internal fun formatForDisplay(phone: String, defaultRegion: String): String {
+            val phoneUtil = PhoneNumberUtil.getInstance()
+            return try {
+                val number = phoneUtil.parse(phone, defaultRegion)
+                val format = if (phone.trimStart().startsWith("+")) {
+                    PhoneNumberUtil.PhoneNumberFormat.INTERNATIONAL
+                } else {
+                    PhoneNumberUtil.PhoneNumberFormat.NATIONAL
+                }
+                phoneUtil.format(number, format)
+            } catch (_: NumberParseException) {
+                phone
+            }
         }
     }
 }

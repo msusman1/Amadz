@@ -206,6 +206,7 @@ class CallLogRepositoryImpl @Inject constructor(
                 id = -record.normalizedPhone.hashCode().toLong(),
                 name = record.fallbackName,
                 phone = record.rawPhone,
+                displayPhone = phoneUtils.formatForDisplay(record.rawPhone),
                 image = record.fallbackImage
             )
         }
@@ -250,7 +251,14 @@ class CallLogRepositoryImpl @Inject constructor(
                         ?.takeIf { it.isNotBlank() }
                         ?.toUri()
                         ?.takeIf { it != Uri.EMPTY }
-                    val shouldLookupContact = contactIdFromLog == null || cachedPhoto == null
+                    val cachedName = cursor.getStringOrEmpty(CallLog.Calls.CACHED_NAME).trim()
+                    val normalizedPhone = phoneUtils.normalizeNumber(phone)
+                    val cachedNameIsPhone = cachedName.isNotBlank() && normalizedPhone != null &&
+                            phoneUtils.normalizeNumber(cachedName) == normalizedPhone
+                    val shouldLookupContact = contactIdFromLog == null ||
+                            cachedPhoto == null ||
+                            cachedName.isBlank() ||
+                            cachedNameIsPhone
                     val contact = if (shouldLookupContact) {
                         contactRepository.getContactByPhone(phone)
                     } else {
@@ -259,19 +267,25 @@ class CallLogRepositoryImpl @Inject constructor(
 
                     val resolvedContactId = contactIdFromLog ?: contact?.id
                     val photo = cachedPhoto ?: contact?.image
+                    val name = if (cachedName.isBlank() || cachedNameIsPhone) {
+                        contact?.name.orEmpty()
+                    } else {
+                        cachedName
+                    }
 
                     add(
                         CallLogData(
                             id = cursor.getLong(idColumnIndex),
                             contactId = resolvedContactId,
-                            name = cursor.getStringOrEmpty(CallLog.Calls.CACHED_NAME),
+                            name = name,
                             phone = phone,
                             time = Date(cursor.getLong(dateColumnIndex)),
                             callDuration = cursor.getLong(durationColumnIndex),
                             callLogType = CallLogType.fromInt(cursor.getInt(phoneTypeColumnIndex)),
                             simSlot = simSlot,
                             simDisplayName = callSim?.displayName,
-                            image = photo
+                            image = photo,
+                            displayPhone = phoneUtils.formatForDisplay(phone)
                         )
                     )
                 }
