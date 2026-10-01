@@ -10,6 +10,7 @@ import androidx.paging.insertSeparators
 import androidx.paging.map
 import com.talsk.amadz.data.CallLogsPagingSource
 import com.talsk.amadz.domain.entity.CallLogData
+import com.talsk.amadz.domain.entity.CallLogGroup
 import com.talsk.amadz.domain.repo.CallLogRepository
 import com.talsk.amadz.util.isSameDay
 import com.talsk.amadz.util.startOfDay
@@ -28,18 +29,21 @@ class CallLogsViewModel @Inject constructor(
         config = PagingConfig(pageSize = CallLogsPagingSource.PAGE_SIZE),
         initialKey = CallLogsPagingSource.FIRST_PAGE
     ) { CallLogsPagingSource(callLogRepository) }.flow
-        .map { pagingData ->
+        .map { pagingData: PagingData<CallLogGroup> ->
             pagingData.map {
-                CallLogUiModel.Item(it)
-            }.insertSeparators { before, after ->
+                CallLogUiModel.Item(it.log, it.count)
+            }.insertSeparators { before: CallLogUiModel?, after: CallLogUiModel? ->
+                val beforeItem = before as? CallLogUiModel.Item
+                val afterItem = after as? CallLogUiModel.Item
+
                 when {
-                    after == null -> null
-                    before == null -> {
-                        CallLogUiModel.Header(after.log.time.startOfDay())
+                    afterItem == null -> null
+                    beforeItem == null -> {
+                        CallLogUiModel.Header(afterItem.log.time.startOfDay())
                     }
 
-                    !before.log.time.isSameDay(after.log.time) -> {
-                        CallLogUiModel.Header(after.log.time.startOfDay())
+                    !beforeItem.log.time.isSameDay(afterItem.log.time) -> {
+                        CallLogUiModel.Header(afterItem.log.time.startOfDay())
                     }
 
                     else -> null
@@ -50,5 +54,5 @@ class CallLogsViewModel @Inject constructor(
 
 sealed interface CallLogUiModel {
     data class Header(val date: Date) : CallLogUiModel
-    data class Item(val log: CallLogData) : CallLogUiModel
+    data class Item(val log: CallLogData, val count: Int = 1) : CallLogUiModel
 }

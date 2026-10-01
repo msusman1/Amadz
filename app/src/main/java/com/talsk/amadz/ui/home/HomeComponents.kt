@@ -213,6 +213,7 @@ fun FavouriteItem(
 @Composable
 fun CallLogItem(
     logData: CallLogData,
+    callCount: Int = 1,
     onCallLogClick: (CallLogData) -> Unit,
     onCallClick: (CallLogData) -> Unit,
     onContactDetailClick: (CallLogData) -> Unit
@@ -236,7 +237,18 @@ fun CallLogItem(
             )
         },
         headlineContent = {
-            Text(text = logData.name.takeIf { it.isNotEmpty() } ?: logData.displayPhone)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(text = logData.name.takeIf { it.isNotEmpty() } ?: logData.displayPhone)
+                if (callCount > 1) {
+                    Text(
+                        text = "($callCount)",
+                        color = if (logData.callLogType == CallLogType.MISSED || logData.callLogType == CallLogType.REJECTED) MaterialTheme.colorScheme.error else Color.Unspecified
+                    )
+                }
+            }
         },
         supportingContent = {
             Row(
@@ -277,4 +289,3 @@ fun CallLogItem(
 
         })
 }
-

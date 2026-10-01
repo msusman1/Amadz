@@ -68,15 +68,6 @@ fun CallLogsScreenInternal(
     onCallClick: (String) -> Unit,
     onCallLogClick: (CallLogData) -> Unit,
 ) {
-    if (callLogs.itemCount == 0) {
-        Text(
-            text = "No call logs found",
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(32.dp),
-            textAlign = TextAlign.Center
-        )
-    }
     LazyPagedColumn(
         modifier = Modifier.fillMaxSize(),
         pagingItems = callLogs,
@@ -97,6 +88,7 @@ fun CallLogsScreenInternal(
                 is CallLogUiModel.Item -> {
                     CallLogItem(
                         logData = model.log,
+                        callCount = model.count,
                         onCallLogClick = onCallLogClick,
                         onCallClick = { onCallClick(model.log.phone) },
                         onContactDetailClick = onContactDetailClick
