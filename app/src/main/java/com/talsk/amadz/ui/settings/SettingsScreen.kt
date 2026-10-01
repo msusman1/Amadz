@@ -1,6 +1,5 @@
 package com.talsk.amadz.ui.settings
 
-import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.clickable
@@ -28,8 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.talsk.amadz.core.DtmfTonePrefs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,12 +38,7 @@ fun SettingsScreen(
     vm: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val prefs = remember {
-        context.getSharedPreferences(DtmfTonePrefs.PREFS_NAME, Context.MODE_PRIVATE)
-    }
-    var dtmfTonesEnabled by remember {
-        mutableStateOf(prefs.getBoolean(DtmfTonePrefs.KEY_DTMF_TONE_ENABLED, true))
-    }
+    val dtmfTonesEnabled by vm.dtmfTonesEnabled.collectAsStateWithLifecycle()
     var showClearLogsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -76,12 +70,7 @@ fun SettingsScreen(
                 trailingContent = {
                     Switch(
                         checked = dtmfTonesEnabled,
-                        onCheckedChange = { enabled ->
-                            dtmfTonesEnabled = enabled
-                            prefs.edit()
-                                .putBoolean(DtmfTonePrefs.KEY_DTMF_TONE_ENABLED, enabled)
-                                .apply()
-                        }
+                        onCheckedChange = vm::setDtmfTonesEnabled
                     )
                 }
             )

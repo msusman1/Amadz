@@ -6,8 +6,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.graphics.toArgb
 import com.talsk.amadz.App
 import com.talsk.amadz.core.LockScreenController
 import com.talsk.amadz.core.ProxyController
@@ -38,16 +41,15 @@ class CallActivity : ComponentActivity() {
     }
 
     companion object {
-
+        const val EXTRA_PHONE = "phone"
         fun start(context: Context, phone: String) {
             val intent = Intent(context, CallActivity::class.java)
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            intent.putExtra("phone", phone)
+            intent.putExtra(EXTRA_PHONE, phone)
             context.startActivity(intent)
 
         }
     }
 }
-
 
 

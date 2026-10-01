@@ -19,12 +19,12 @@ android {
     }
 
     namespace = "com.talsk.amadz"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.talsk.amadz"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 15
         versionName = "1.1.5"
 
@@ -72,7 +72,7 @@ kotlin {
 }
 
 dependencies {
-
+    ksp(libs.hilt.compiler)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -82,8 +82,6 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    testImplementation(libs.junit)
-    debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.coil.compose)
     implementation(libs.libphonenumber)
@@ -93,9 +91,15 @@ dependencies {
     implementation(libs.androidx.material3.adaptive.navigation3)
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.paging)
     implementation(libs.androidx.paging.compose)
+    implementation(libs.androidx.datastore.preferences)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.core)
 
 }

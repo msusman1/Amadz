@@ -1,5 +1,10 @@
 package com.talsk.amadz.ui.home.calllogs
 
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
+import android.provider.CallLog
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -7,15 +12,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import com.talsk.amadz.App
 import com.talsk.amadz.domain.entity.CallLogData
 import com.talsk.amadz.ui.components.LazyPagedColumn
 import com.talsk.amadz.ui.home.CallLogItem
@@ -32,18 +35,22 @@ fun CallLogsScreen(
 ) {
     val callLogs: LazyPagingItems<CallLogUiModel> = vm.callLogs.collectAsLazyPagingItems()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val contentResolver = LocalContext.current.contentResolver
 
     DisposableEffect(lifecycleOwner, callLogs) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                if (App.needCallLogRefresh) {
-                    App.needCallLogRefresh = false
-                    callLogs.refresh()
-                }
+        val callLogObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                callLogs.refresh()
             }
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        contentResolver.registerContentObserver(
+            CallLog.Calls.CONTENT_URI,
+            true,
+            callLogObserver
+        )
+        onDispose {
+            contentResolver.unregisterContentObserver(callLogObserver)
+        }
     }
 
     CallLogsScreenInternal(
@@ -61,16 +68,10 @@ fun CallLogsScreenInternal(
     onCallClick: (String) -> Unit,
     onCallLogClick: (CallLogData) -> Unit,
 ) {
-    if (callLogs.itemCount == 0) {
-        Text(
-            text = "No call logs found",
-            modifier = Modifier.fillMaxWidth().padding(32.dp),
-            textAlign = TextAlign.Center
-        )
-    }
     LazyPagedColumn(
         modifier = Modifier.fillMaxSize(),
-        pagingItems = callLogs
+        pagingItems = callLogs,
+        contentPadding = PaddingValues(bottom = 96.dp)
     ) {
         items(callLogs.itemCount, key = { index ->
             when (val item = callLogs[index]) {
@@ -87,6 +88,7 @@ fun CallLogsScreenInternal(
                 is CallLogUiModel.Item -> {
                     CallLogItem(
                         logData = model.log,
+                        callCount = model.count,
                         onCallLogClick = onCallLogClick,
                         onCallClick = { onCallClick(model.log.phone) },
                         onContactDetailClick = onContactDetailClick

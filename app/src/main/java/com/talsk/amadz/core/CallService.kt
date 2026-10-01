@@ -4,8 +4,8 @@ import android.telecom.Call
 import android.telecom.CallAudioState
 import android.telecom.InCallService
 import android.util.Log
-import com.talsk.amadz.domain.CallServiceAudioDelegate
 import com.talsk.amadz.domain.CallOrchestrator
+import com.talsk.amadz.domain.CallServiceAudioDelegate
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -15,7 +15,6 @@ private const val TAG = "CallService"
 class CallService : InCallService(), CallServiceAudioDelegate {
     @Inject
     lateinit var callOrchestrator: CallOrchestrator
-
 
     override fun onCreate() {
         Log.d(TAG, "onCreate")
@@ -47,7 +46,7 @@ class CallService : InCallService(), CallServiceAudioDelegate {
         val route = if (enabled) {
             CallAudioState.ROUTE_SPEAKER
         } else {
-            CallAudioState.ROUTE_EARPIECE
+            CallAudioState.ROUTE_WIRED_OR_EARPIECE
         }
         this.setAudioRoute(route)
     }

@@ -26,7 +26,14 @@ fun FullScreenLoader() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+        }
     }
 }
 
@@ -55,10 +62,10 @@ fun InlineLoader() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp),
+            .padding(vertical = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+        CircularProgressIndicator(modifier = Modifier.size(16.dp))
     }
 }
 

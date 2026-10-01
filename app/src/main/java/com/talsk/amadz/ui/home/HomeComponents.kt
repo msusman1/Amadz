@@ -213,6 +213,7 @@ fun FavouriteItem(
 @Composable
 fun CallLogItem(
     logData: CallLogData,
+    callCount: Int = 1,
     onCallLogClick: (CallLogData) -> Unit,
     onCallClick: (CallLogData) -> Unit,
     onContactDetailClick: (CallLogData) -> Unit
@@ -235,7 +236,20 @@ fun CallLogItem(
                 onClick = { onContactDetailClick(logData) }
             )
         },
-        headlineContent = { Text(text = logData.name.takeIf { it.isNotEmpty() } ?: logData.phone) },
+        headlineContent = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(text = logData.name.takeIf { it.isNotEmpty() } ?: logData.displayPhone)
+                if (callCount > 1) {
+                    Text(
+                        text = "($callCount)",
+                        color = if (logData.callLogType == CallLogType.MISSED || logData.callLogType == CallLogType.REJECTED) MaterialTheme.colorScheme.error else Color.Unspecified
+                    )
+                }
+            }
+        },
         supportingContent = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -254,9 +268,9 @@ fun CallLogItem(
                     text = logData.time.toReadableFormat(),
                     color = if (logData.callLogType == CallLogType.MISSED || logData.callLogType == CallLogType.REJECTED) MaterialTheme.colorScheme.error else Color.Unspecified
                 )
-                if (logData.simSlot != null && logData.simSlot >= 0) {
+                logData.simLabel()?.let { simLabel ->
                     Text(
-                        text = "SIM ${logData.simSlot + 1}",
+                        text = simLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 8.dp)
@@ -275,5 +289,3 @@ fun CallLogItem(
 
         })
 }
-
-

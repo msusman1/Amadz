@@ -1,5 +1,9 @@
 package com.talsk.amadz.ui.home
 
+import android.content.Context
+import android.view.Gravity
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -14,6 +18,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,12 +34,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.talsk.amadz.R
 import com.talsk.amadz.ui.IconButtonLongClickable
 import com.talsk.amadz.ui.theme.AmadzTheme
@@ -52,7 +61,8 @@ fun KeyPadPrew() {
 
             Spacer(Modifier.height(48.dp))
             KeyPad(
-                phone = "2345",
+                phone = TextFieldValue("2345"),
+                onPhoneChange = {},
                 onTapDown = {},
                 onTapUp = {},
                 onBackSpaceClicked = {},
@@ -69,7 +79,8 @@ fun KeyPadPrew() {
 @Composable
 fun KeyPad(
     modifier: Modifier = Modifier,
-    phone: String,
+    phone: TextFieldValue,
+    onPhoneChange: (TextFieldValue) -> Unit,
     onTapDown: (Char) -> Unit,
     onTapUp: () -> Unit,
     onBackSpaceClicked: () -> Unit,
@@ -78,6 +89,10 @@ fun KeyPad(
     showCallButton: Boolean,
     showClearButton: Boolean,
 ) {
+    val textStyle = MaterialTheme.typography.headlineMedium
+    val textColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val textSize = with(LocalDensity.current) { textStyle.fontSize.toPx() }
+
     Surface(modifier =modifier,
         color = MaterialTheme.colorScheme.surfaceVariant,
     ){
@@ -90,21 +105,46 @@ fun KeyPad(
             Box(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
+                AndroidView(
                     modifier = Modifier
-                        .fillMaxWidth(1f)
-                        .padding(horizontal = 56.dp),
-                    text = phone,
-                    maxLines = 1,
-                    style = MaterialTheme.typography.headlineMedium,
-                    textAlign = TextAlign.Center
+                        .fillMaxWidth()
+                        .padding(horizontal = 56.dp)
+                        .heightIn(min = 48.dp),
+                    factory = { context ->
+                        DialpadEditText(context).apply {
+                            gravity = Gravity.CENTER
+                            setSingleLine(true)
+                            inputType = EditorInfo.TYPE_CLASS_PHONE
+                            showSoftInputOnFocus = false
+                            isCursorVisible = true
+                            setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, textSize)
+                            setTextColor(textColor.toArgb())
+                            background = null
+                            onValueChange = onPhoneChange
+                            setText(phone.text)
+                            setSelection(phone.selection.start, phone.selection.end)
+                        }
+                    },
+                    update = { editText ->
+                        editText.onValueChange = onPhoneChange
+                        editText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, textSize)
+                        editText.setTextColor(textColor.toArgb())
+                        if (editText.text.toString() != phone.text) {
+                            editText.setText(phone.text)
+                        }
+                        val start = phone.selection.start.coerceIn(0, editText.length())
+                        val end = phone.selection.end.coerceIn(0, editText.length())
+                        if (editText.selectionStart != start || editText.selectionEnd != end) {
+                            editText.setSelection(start, end)
+                        }
+                    },
                 )
                 if (showClearButton) {
                     IconButtonLongClickable(
                         modifier = Modifier.align(Alignment.CenterEnd),
                         onLongClick = onClearClicked,
                         onClick = {
-                            if (phone.isNotEmpty()) {
+                            if (phone.text.isNotEmpty()) {
                                 onBackSpaceClicked()
                             }
                         },
@@ -226,6 +266,65 @@ fun KeyPad(
         }
     }
 }
+
+private class DialpadEditText(context: Context) : EditText(context) {
+    var onValueChange: ((TextFieldValue) -> Unit)? = null
+
+    override fun onSelectionChanged(selStart: Int, selEnd: Int) {
+        super.onSelectionChanged(selStart, selEnd)
+        val textLength = length()
+        onValueChange?.invoke(
+            TextFieldValue(
+                text = text.toString(),
+                selection = TextRange(
+                    selStart.coerceIn(0, textLength),
+                    selEnd.coerceIn(0, textLength),
+                ),
+            )
+        )
+    }
+
+    override fun onTextChanged(
+        text: CharSequence?,
+        start: Int,
+        lengthBefore: Int,
+        lengthAfter: Int,
+    ) {
+        super.onTextChanged(text, start, lengthBefore, lengthAfter)
+        val currentText = text?.toString().orEmpty()
+        onValueChange?.invoke(
+            TextFieldValue(
+                text = currentText,
+                selection = TextRange(
+                    selectionStart.coerceIn(0, currentText.length),
+                    selectionEnd.coerceIn(0, currentText.length),
+                ),
+            )
+        )
+    }
+}
+
+fun TextFieldValue.insertAtSelection(insertedText: String): TextFieldValue {
+    val start = selection.min
+    val end = selection.max
+    val updatedText = text.replaceRange(start, end, insertedText)
+    val cursor = start + insertedText.length
+    return TextFieldValue(updatedText, TextRange(cursor))
+}
+
+fun TextFieldValue.deleteBeforeCursor(): TextFieldValue {
+    val start = selection.min
+    val end = selection.max
+    if (start != end) {
+        val updatedText = text.removeRange(start, end)
+        return TextFieldValue(updatedText, TextRange(start))
+    }
+    if (start == 0) return this
+
+    val updatedText = text.removeRange(start - 1, start)
+    return TextFieldValue(updatedText, TextRange(start - 1))
+}
+
 
 @Composable
 fun RowScope.DialButton(

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -32,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.talsk.amadz.R
@@ -42,6 +44,8 @@ import com.talsk.amadz.ui.components.ContactAvatar
 import com.talsk.amadz.ui.components.SimErrorDialog
 import com.talsk.amadz.ui.components.ToggleFab
 import com.talsk.amadz.ui.home.KeyPad
+import com.talsk.amadz.ui.home.deleteBeforeCursor
+import com.talsk.amadz.ui.home.insertAtSelection
 import com.talsk.amadz.ui.theme.AmadzTheme
 import com.talsk.amadz.ui.theme.green
 import com.talsk.amadz.ui.theme.red
@@ -102,7 +106,9 @@ fun CallScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface).statusBarsPadding(),
+            .background(MaterialTheme.colorScheme.surface)
+            .statusBarsPadding()
+            .navigationBarsPadding(),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         CallHeader(
@@ -132,6 +138,7 @@ fun CallScreen(
                 ToggleFab(
                     icon = R.drawable.baseline_dialpad_24,
                     text = "Keyboard",
+                    isActive = keyboardOpen,
                     onAction = {
                         keyboardOpen = it
                     }
@@ -139,16 +146,23 @@ fun CallScreen(
                 ToggleFab(
                     icon = R.drawable.outline_pause_24,
                     text = "Hold",
+                    isActive = uiState is CallState.OnHold,
                     onAction = { onAction(CallAction.Hold(it)) }
                 )
                 ToggleFab(
                     icon = R.drawable.outline_mic_off_24,
                     text = "Mute",
+                    isActive = (uiState as? CallState.Active)?.isMuted == true,
                     onAction = { onAction(CallAction.Mute(it)) }
                 )
                 ToggleFab(
                     icon = R.drawable.outline_volume_up_24,
                     text = "Speaker",
+                    isActive = when (uiState) {
+                        is CallState.Active -> uiState.isSpeakerOn
+                        is CallState.Ringing -> uiState.isSpeakerOn
+                        else -> false
+                    },
                     onAction = { onAction(CallAction.Speaker(it)) }
                 )
             }
@@ -215,7 +229,9 @@ fun CallHeader(
 
 @Composable
 fun KeyPad(keyboardOpen: Boolean, startTone: (Char) -> Unit, stopTone: () -> Unit) {
-    var dialed by rememberSaveable { mutableStateOf("") }
+    var dialed by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue())
+    }
     androidx.compose.animation.AnimatedVisibility(
         visible = keyboardOpen,
         enter = fadeIn() + slideInVertically { it / 2 },
@@ -225,16 +241,17 @@ fun KeyPad(keyboardOpen: Boolean, startTone: (Char) -> Unit, stopTone: () -> Uni
 
         KeyPad(
             phone = dialed,
+            onPhoneChange = { dialed = it },
             onTapDown = {
-                dialed += it
+                dialed = dialed.insertAtSelection(it.toString())
                 startTone(it)
             },
             onTapUp = stopTone,
             onBackSpaceClicked = {
-                dialed = dialed.dropLast(1)
+                dialed = dialed.deleteBeforeCursor()
             },
             onClearClicked = {
-                dialed = ""
+                dialed = TextFieldValue()
             },
             onCallClicked = {},
             showCallButton = false,

@@ -4,29 +4,27 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.database.ContentObserver
-import android.database.Cursor
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract
-import android.telephony.TelephonyManager
 import android.util.Log
-import androidx.core.content.ContextCompat.getSystemService
+import android.util.LruCache
 import androidx.core.database.getStringOrNull
 import androidx.core.net.toUri
-import com.google.i18n.phonenumbers.NumberParseException
-import com.google.i18n.phonenumbers.PhoneNumberUtil
 import com.talsk.amadz.di.IODispatcher
 import com.talsk.amadz.domain.entity.Contact
 import com.talsk.amadz.domain.repo.ContactRepository
+import com.talsk.amadz.util.PhoneUtils
+import com.talsk.amadz.util.toT9GlobPattern
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Locale
 import javax.inject.Inject
 
 /**
@@ -36,11 +34,11 @@ import javax.inject.Inject
 
 class ContactsRepositoryImpl @Inject constructor(
     @ApplicationContext context: Context,
-    @IODispatcher private val ioDispatcher: CoroutineDispatcher
+    @IODispatcher private val ioDispatcher: CoroutineDispatcher,
+    private val phoneUtils: PhoneUtils
 ) : ContactRepository {
     val TAG = "ContactsRepositoryImpl"
     val contentResolver: ContentResolver = context.contentResolver
-    val telephonyManager = getSystemService(context, TelephonyManager::class.java)
     private val phoneProjection = arrayOf(
         ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
         ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
@@ -52,106 +50,110 @@ class ContactsRepositoryImpl @Inject constructor(
         ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
         ContactsContract.Contacts.PHOTO_URI,
     )
+    private val contactDetailProjection = arrayOf(
+        ContactsContract.PhoneLookup._ID,
+        ContactsContract.PhoneLookup.DISPLAY_NAME,
+        ContactsContract.PhoneLookup.PHOTO_URI,
+        ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI,
+        ContactsContract.PhoneLookup.NUMBER
+    )
 
-    private fun Cursor.toContacts(): List<Contact> {
-        val contacts = mutableMapOf<Long, Contact>()
-        use { cursor ->
-            while (cursor.moveToNext()) {
-                val contact = cursor.toContactData()
-                contacts.putIfAbsent(contact.id, contact)
-            }
-        }
-        return contacts.values.toList()
-    }
 
-    private fun Cursor.toContactRows(): List<Contact> {
-        val contacts = mutableListOf<Contact>()
-        use { cursor ->
-            while (cursor.moveToNext()) {
-                contacts += cursor.toContactData()
-            }
-        }
-        return contacts
-    }
-
-    override suspend fun getContactsPaged(limit: Int, offset: Int): List<Contact> =
-        withContext(ioDispatcher) {
-            Log.d(TAG, "getContactsPaged: $limit, $offset")
-            val contacts = mutableListOf<Contact>()
-            contentResolver.query(
-                ContactsContract.Contacts.CONTENT_URI,
-                contactProjection,
-                "${ContactsContract.Contacts.HAS_PHONE_NUMBER} > 0",
-                null,
-                "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} COLLATE NOCASE ASC LIMIT $limit OFFSET $offset"
-            )?.use { cursor ->
-                val idIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts._ID)
-                val nameIndex =
-                    cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
-                val photoIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_URI)
+    override suspend fun getContactsPaged(limit: Int, offset: Int) = withContext(ioDispatcher) {
+        Log.d(TAG, "getContactsPaged: $limit, $offset")
+        val contacts = contentResolver.query(
+            ContactsContract.Contacts.CONTENT_URI,
+            contactProjection,
+            "${ContactsContract.Contacts.HAS_PHONE_NUMBER} > 0",
+            null,
+            "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} COLLATE NOCASE ASC LIMIT $limit OFFSET $offset"
+        )?.use { cursor ->
+            val idIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts._ID)
+            val nameIndex =
+                cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+            val photoIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_URI)
+            val seenIds = HashSet<Long>()
+            val contactList = buildList {
                 while (cursor.moveToNext()) {
-                    contacts += Contact(
+                    val contact = Contact(
                         id = cursor.getLong(idIndex),
                         name = cursor.getString(nameIndex).orEmpty(),
                         phone = "",
                         image = cursor.getStringOrNull(photoIndex)?.toUri(),
                     )
+                    if (seenIds.add(contact.id)) add(contact)
                 }
             }
+            contactList
+        } ?: return@withContext emptyList()
 
-            if (contacts.isEmpty()) return@withContext emptyList()
-            val phoneNumbers = loadPhoneNumbers(contacts.map { it.id })
-            contacts.mapNotNull { contact ->
-                val phone = phoneNumbers[contact.id] ?: return@mapNotNull null
-                contact.copy(phone = phone)
-            }
+        val phoneNumbers = getPhoneNumbersForContactIds(contacts.map { it.id })
+        contacts.mapNotNull { contact ->
+            val phone = phoneNumbers[contact.id] ?: return@mapNotNull null
+            contact.copy(phone = phone)
         }
+    }
 
-    override suspend fun searchContacts(query: String, limit: Int, offset: Int): List<Contact> =
+    override suspend fun searchContacts(query: String, limit: Int, offset: Int) =
         withContext(ioDispatcher) {
             if (query.isBlank()) return@withContext emptyList()
-
             val normalizedQuery = query.trim()
-            val selection =
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? OR ${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ?".trimIndent()
-            val args = arrayOf("%$normalizedQuery%", "%$normalizedQuery%")
-            val phoneAndNameMatches = contentResolver.query(
-                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                phoneProjection,
-                selection,
-                args,
-                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC LIMIT $limit OFFSET $offset"
-            )?.toContactRows() ?: emptyList()
-
-            val emailAndAddressMatchedIds = searchContactIdsByEmailOrAddress(
-                query = normalizedQuery,
-                limit = limit,
-                offset = offset
+            val phoneMatches = searchContactsByNameOrPhone(
+                normalizedQuery,
+                limit,
+                offset
             )
-            val emailAndAddressMatches = loadContactsByIds(emailAndAddressMatchedIds)
 
-            (phoneAndNameMatches + emailAndAddressMatches)
-                .distinctBy { contact -> "${contact.id}_${contact.phone}" }
+            if (phoneMatches.size >= limit) {
+                return@withContext phoneMatches
+            }
+
+            val remaining = limit - phoneMatches.size
+
+            val emailMatches = searchContactsByEmailOrAddress(
+                query = normalizedQuery,
+                limit = remaining,
+                offset = 0
+            )
+
+            (phoneMatches + emailMatches)
+                .distinctBy { it.id to it.phone }
                 .take(limit)
         }
 
-    override suspend fun getContactByPhone(phoneNumber: String): Contact? =
-        withContext(ioDispatcher) {
-            val uri = Uri.withAppendedPath(
-                ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber)
-            )
-
-            contentResolver.query(
-                uri, arrayOf(
-                    ContactsContract.PhoneLookup._ID,
-                    ContactsContract.PhoneLookup.DISPLAY_NAME,
-                    ContactsContract.PhoneLookup.PHOTO_URI,
-                    ContactsContract.PhoneLookup.NUMBER
-                ), null, null, null
-            )?.use { cursor ->
-                if (cursor.moveToFirst()) cursor.toContactDataForPhoneLookup() else null
-            }
+    private val cache = LruCache<String, Contact>(100)
+    override suspend fun getContactByPhone(phoneNumber: String) = withContext(ioDispatcher) {
+        val key = phoneUtils.normalizeNumber(phoneNumber)
+            ?.takeIf { it.isNotEmpty() } ?: return@withContext null
+        cache.get(key)?.let { return@withContext it }
+        val uri = Uri.withAppendedPath(
+            ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+            Uri.encode(key)
+        )
+        return@withContext contentResolver.query(
+            uri, contactDetailProjection, null, null, null
+        )?.use { cursor ->
+            val idColumnIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup._ID)
+            val nameColumnIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME)
+            val numberColumnIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.NUMBER)
+            val photoUriColumnIndex = cursor.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_URI)
+            val photoThumbnailUriColumnIndex =
+                cursor.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI)
+            if (cursor.moveToFirst())
+                Contact(
+                    id = cursor.getLong(idColumnIndex),
+                    name = cursor.getString(nameColumnIndex),
+                    phone = cursor.getString(numberColumnIndex),
+                    image = (
+                        cursor.getStringOrNull(photoUriColumnIndex)?.takeIf { it.isNotBlank() }
+                            ?: cursor.getStringOrNull(photoThumbnailUriColumnIndex)
+                                ?.takeIf { it.isNotBlank() }
+                        )?.toUri()
+                ) else null
+        }?.also {
+            cache.put(key, it)
         }
+    }
 
     override suspend fun getCompanyName(contactId: Long): String? = withContext(ioDispatcher) {
         val orgWhere =
@@ -170,33 +172,6 @@ class ContactsRepositoryImpl @Inject constructor(
         }
     }
 
-
-    fun normalizePhoneNumber(phone: String): String? {
-        val phoneUtil = PhoneNumberUtil.getInstance()
-
-        // Get the user's default country code
-        val defaultRegion = telephonyManager?.simCountryIso?.uppercase(Locale.getDefault())
-            ?: telephonyManager?.networkCountryIso?.uppercase(Locale.getDefault())
-            ?: "US" // Default to "US" if unknown
-
-        return try {
-            // Parse the phone number
-            val numberProto = phoneUtil.parse(phone, defaultRegion)
-
-            // Format it into E.164 format (+<country_code><number>)
-            phoneUtil.format(numberProto, PhoneNumberUtil.PhoneNumberFormat.E164)
-        } catch (e: NumberParseException) {
-            e.printStackTrace()
-            null // Return null if the phone number is invalid
-        }
-    }
-
-
-    /**
-     * Get all favourite contacts as ContactData list
-     */
-
-
     override suspend fun removeFromFavourites(contactId: Long): Unit = withContext(ioDispatcher) {
         val values = ContentValues().apply {
             put(ContactsContract.Contacts.STARRED, 0)
@@ -210,7 +185,6 @@ class ContactsRepositoryImpl @Inject constructor(
     }
 
     override fun observeFavourites(): Flow<List<Contact>> = callbackFlow {
-
         fun load(): List<Contact> {
             val selection = "${ContactsContract.Contacts.STARRED} = 1"
             return contentResolver.query(
@@ -219,14 +193,38 @@ class ContactsRepositoryImpl @Inject constructor(
                 selection,
                 null,
                 ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
-            )?.toContacts() ?: emptyList()
+            )?.use { cursor ->
+                val idColumnIndex =
+                    cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+                val nameColumnIndex =
+                    cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numberColumnIndex =
+                    cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                val photoUriColumnIndex =
+                    cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI)
+                val seenIds = HashSet<Long>()
+                val contactList = buildList {
+                    while (cursor.moveToNext()) {
+                        val contact = Contact(
+                            id = cursor.getLong(idColumnIndex),
+                            name = cursor.getString(nameColumnIndex),
+                            phone = cursor.getString(numberColumnIndex),
+                            image = cursor.getStringOrNull(photoUriColumnIndex)?.toUri()
+                        )
+                        if (seenIds.add(contact.id)) add(contact)
+                    }
+                }
+                contactList
+            } ?: emptyList()
         }
 
         trySend(load())
 
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
-                trySend(load())
+                launch(ioDispatcher) {
+                    trySend(load())
+                }
             }
         }
         contentResolver.registerContentObserver(
@@ -239,53 +237,62 @@ class ContactsRepositoryImpl @Inject constructor(
 
     }.flowOn(ioDispatcher)
 
+    private fun searchContactsByNameOrPhone(
+        normalizedQuery: String,
+        limit: Int,
+        offset: Int
+    ): List<Contact> {
+        val t9Pattern = normalizedQuery.toT9GlobPattern()
+        val nameColumn = ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
+        val numberColumn = ContactsContract.CommonDataKinds.Phone.NUMBER
+        val selection = buildString {
+            append("($nameColumn LIKE ? OR $numberColumn LIKE ?")
+            if (t9Pattern != null) append(" OR $nameColumn GLOB ?")
+            append(")")
+        }
+        val args = buildList {
+            add("%$normalizedQuery%")
+            add("%$normalizedQuery%")
+            if (t9Pattern != null) add(t9Pattern)
+        }.toTypedArray()
+        val phoneAndNameMatches = contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            phoneProjection,
+            selection,
+            args,
+            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC LIMIT $limit OFFSET $offset"
+        )?.use { cursor ->
+            val idColumnIndex =
+                cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+            val nameColumnIndex =
+                cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+            val numberColumnIndex =
+                cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            val photoUriColumnIndex =
+                cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI)
 
-    private fun Cursor.toContactData(): Contact {
-        val idColumnIndex = this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-        val nameColumnIndex =
-            this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-        val numberColumnIndex = this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-        val photoUriColumnIndex =
-            this.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI)
+            val contactList = buildList {
+                while (cursor.moveToNext()) {
+                    val contact = Contact(
+                        id = cursor.getLong(idColumnIndex),
+                        name = cursor.getString(nameColumnIndex),
+                        phone = cursor.getString(numberColumnIndex),
+                        image = cursor.getStringOrNull(photoUriColumnIndex)?.toUri()
+                    )
+                    add(contact)
+                }
+            }
+            contactList
 
-        // Retrieve the contact details
-        val contactId = this.getLong(idColumnIndex)
-        val contactName = this.getString(nameColumnIndex)
-        val contactNumber = this.getString(numberColumnIndex)
-        val photoUri = this.getStringOrNull(photoUriColumnIndex)?.toUri()
-        return Contact(
-            id = contactId,
-            name = contactName,
-            phone = contactNumber,
-            image = photoUri,
-        )
+        } ?: emptyList()
+        return phoneAndNameMatches
     }
 
-    private fun Cursor.toContactDataForPhoneLookup(): Contact {
-
-        val idColumnIndex = this.getColumnIndex(ContactsContract.PhoneLookup._ID)
-        val nameColumnIndex = this.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME)
-        val numberColumnIndex = this.getColumnIndex(ContactsContract.PhoneLookup.NUMBER)
-        val photoUriColumnIndex = this.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_URI)
-
-        // Retrieve the contact details
-        val contactId = this.getLong(idColumnIndex)
-        val contactName = this.getString(nameColumnIndex)
-        val contactNumber = this.getString(numberColumnIndex)
-        val photoUri = this.getStringOrNull(photoUriColumnIndex)?.toUri()
-        return Contact(
-            id = contactId,
-            name = contactName,
-            phone = contactNumber,
-            image = photoUri,
-        )
-    }
-
-    private fun searchContactIdsByEmailOrAddress(
+    private fun searchContactsByEmailOrAddress(
         query: String,
         limit: Int,
         offset: Int
-    ): List<Long> {
+    ): List<Contact> {
         val mimetypeColumn = ContactsContract.Data.MIMETYPE
         val selection = """
             ($mimetypeColumn = ? AND ${ContactsContract.CommonDataKinds.Email.ADDRESS} LIKE ?)
@@ -299,7 +306,7 @@ class ContactsRepositoryImpl @Inject constructor(
             "%$query%"
         )
 
-        return contentResolver.query(
+        val emailAndAddressMatchedIds = contentResolver.query(
             ContactsContract.Data.CONTENT_URI,
             arrayOf(ContactsContract.Data.CONTACT_ID),
             selection,
@@ -313,13 +320,16 @@ class ContactsRepositoryImpl @Inject constructor(
             }
             ids.toList()
         } ?: emptyList()
+
+        return loadContactsByIds(emailAndAddressMatchedIds)
     }
 
     private fun loadContactsByIds(contactIds: List<Long>): List<Contact> {
         if (contactIds.isEmpty()) return emptyList()
 
         val placeholders = contactIds.joinToString(",") { "?" }
-        val selection = "${ContactsContract.Contacts._ID} IN ($placeholders) AND ${ContactsContract.Contacts.HAS_PHONE_NUMBER} > 0"
+        val selection =
+            "${ContactsContract.Contacts._ID} IN ($placeholders) AND ${ContactsContract.Contacts.HAS_PHONE_NUMBER} > 0"
         val args = contactIds.map { it.toString() }.toTypedArray()
         val contacts = mutableListOf<Contact>()
 
@@ -331,7 +341,8 @@ class ContactsRepositoryImpl @Inject constructor(
             "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} COLLATE NOCASE ASC"
         )?.use { cursor ->
             val idIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts._ID)
-            val nameIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+            val nameIndex =
+                cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
             val photoIndex = cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_URI)
 
             while (cursor.moveToNext()) {
@@ -345,20 +356,20 @@ class ContactsRepositoryImpl @Inject constructor(
         }
 
         if (contacts.isEmpty()) return emptyList()
-        val phoneNumbers = loadPhoneNumbers(contacts.map { it.id })
+        val phoneNumbers = getPhoneNumbersForContactIds(contacts.map { it.id })
         return contacts.mapNotNull { contact ->
             val phone = phoneNumbers[contact.id] ?: return@mapNotNull null
             contact.copy(phone = phone)
         }
     }
 
-    private fun loadPhoneNumbers(contactIds: List<Long>): Map<Long, String> {
+    private fun getPhoneNumbersForContactIds(contactIds: List<Long>): Map<Long, String> {
         if (contactIds.isEmpty()) return emptyMap()
         val placeholders = contactIds.joinToString(",") { "?" }
         val selection = "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} IN ($placeholders)"
         val args = contactIds.map { it.toString() }.toTypedArray()
-        val numbers = mutableMapOf<Long, String>()
-        contentResolver.query(
+
+        return contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             arrayOf(
                 ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
@@ -369,16 +380,20 @@ class ContactsRepositoryImpl @Inject constructor(
             args,
             "${ContactsContract.CommonDataKinds.Phone.IS_PRIMARY} DESC"
         )?.use { cursor ->
-            val idIndex = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-            val numberIndex = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
-            while (cursor.moveToNext()) {
-                val id = cursor.getLong(idIndex)
-                val number = cursor.getString(numberIndex)
-                if (!numbers.containsKey(id) && !number.isNullOrBlank()) {
-                    numbers[id] = number
+            val idIndex =
+                cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+            val numberIndex =
+                cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            buildMap {
+                while (cursor.moveToNext()) {
+                    val id = cursor.getLong(idIndex)
+                    val number = cursor.getString(numberIndex)
+                    if (!number.isNullOrBlank()) {
+                        putIfAbsent(id, number)
+                    }
                 }
             }
-        }
-        return numbers
+        } ?: emptyMap()
+
     }
 }

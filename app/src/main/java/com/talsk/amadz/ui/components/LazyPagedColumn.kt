@@ -1,5 +1,6 @@
 package com.talsk.amadz.ui.components
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Composable
@@ -11,11 +12,13 @@ import androidx.paging.compose.LazyPagingItems
 fun <T : Any> LazyPagedColumn(
     pagingItems: LazyPagingItems<T>,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
     pagedContent: LazyListScope.(LazyPagingItems<T>) -> Unit
 ) {
 
     LazyColumn(
-        modifier = modifier
+        modifier = modifier,
+        contentPadding = contentPadding
     ) {
         /* ---------- REFRESH STATE ---------- */
         when (pagingItems.loadState.refresh) {
