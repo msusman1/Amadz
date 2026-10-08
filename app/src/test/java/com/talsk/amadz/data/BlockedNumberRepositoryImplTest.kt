@@ -50,4 +50,25 @@ class BlockedNumberRepositoryImplTest {
             }
         }
     }
+
+    @Test
+    fun supportNonNANPVariableLengthExactNumbersAndRegexRules() {
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            context.getSharedPreferences(
+                BlockedNumberRepositoryImpl.LEGACY_PREF_NAME,
+                Context.MODE_PRIVATE
+            ).edit()
+                .putStringSet("blocked_numbers", setOf("15167898764"))
+                .commit()
+
+            val repository = BlockedNumberRepositoryImpl(context, PhoneUtils(context))
+
+            assertTrue(repository.isBlocked("+86 15167898764"))
+            assertFalse(repository.isBlocked("+86 15167898765"))
+
+            repository.blockPattern("^151\\d{8}$")
+            assertTrue(repository.isBlocked("+86 15167898765"))
+        }
+    }
 }

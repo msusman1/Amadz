@@ -86,12 +86,8 @@ class BlockedNumberRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun String.toCanonicalNumber(): String? {
-        val normalized = phoneUtils.normalizeNumber(this).orEmpty()
-        val digits = normalized.filter { it.isDigit() }
-        if (digits.isBlank()) return null
-        return if (digits.length > 10) digits.takeLast(10) else digits
-    }
+    private fun String.toCanonicalNumber(): String? =
+        phoneUtils.getNSN(this)
 
     companion object {
         const val PREF_NAME = "blocked_numbers_preferences"
