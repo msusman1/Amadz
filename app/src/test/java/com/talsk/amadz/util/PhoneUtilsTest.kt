@@ -73,6 +73,49 @@ class PhoneUtilsTest {
     }
 
     // =========================================================================
+    // 3. National Significant Number Tests
+    // =========================================================================
+
+    @Test
+    fun `getNSN keeps CN local number intact`() {
+        assertEquals(
+            "15167898765",
+            createPhoneUtilsWithRegion("CN").getNSN("15167898765", "CN")
+        )
+        assertEquals(
+            "15167898765",
+            createPhoneUtilsWithRegion("CN").getNSN("+86 15167898765", "CN")
+        )
+    }
+
+    @Test
+    fun `getNSN ignores region when plus present`() {
+        assertEquals(
+            "15167898765",
+            createPhoneUtilsWithRegion("US").getNSN("+8615167898765", "US")
+        )
+        assertEquals(
+            "3468280786",
+            createPhoneUtilsWithRegion("ZZ").getNSN("+13468280786", "ZZ")
+        )
+    }
+
+    @Test
+    fun `getNSN strips trunk zero for GB PK US`() {
+        assertEquals(
+            "4155552671",
+            createPhoneUtilsWithRegion("US").getNSN("4155552671", "US")
+        )
+        assertEquals(
+            "2079460912",
+            createPhoneUtilsWithRegion("GB").getNSN("02079460912", "GB")
+        )
+        assertEquals(
+            "512521005",
+            createPhoneUtilsWithRegion("PK").getNSN("0512521005", "PK")
+        )
+    }
+    // =========================================================================
     // Helpers
     // =========================================================================
 

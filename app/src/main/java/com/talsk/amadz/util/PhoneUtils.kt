@@ -34,6 +34,10 @@ class PhoneUtils @Inject constructor(
         }
     }
 
+    fun getNSN(phone: String): String? {
+        return getNSN(phone, defaultRegion())
+    }
+
     private fun defaultRegion(): String =
         telephonyManager?.simCountryIso?.takeIf { it.isNotBlank() }
             ?.uppercase(Locale.getDefault())
@@ -55,6 +59,19 @@ class PhoneUtils @Inject constructor(
             } catch (_: NumberParseException) {
                 phone
             }
+        }
+    }
+
+    internal fun getNSN(phone: String, defaultRegion: String): String? {
+        val phoneUtil = PhoneNumberUtil.getInstance()
+
+        return try {
+            val numberProto = phoneUtil.parse(phone, defaultRegion)
+
+            PhoneNumberUtil.getInstance().getNationalSignificantNumber(numberProto)
+        } catch (e: NumberParseException) {
+            e.printStackTrace()
+            null
         }
     }
 }
