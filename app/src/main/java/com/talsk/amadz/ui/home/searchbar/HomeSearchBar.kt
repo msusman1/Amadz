@@ -226,7 +226,8 @@ private fun SearchResults(
             pagingItems = filteredContacts,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                .weight(1f),
+            errorMessage = "Failed to load suggestions"
         ) {
             items(
                 count = filteredContacts.itemCount,

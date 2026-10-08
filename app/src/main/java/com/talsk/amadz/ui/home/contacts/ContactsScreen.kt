@@ -37,7 +37,8 @@ fun ContactsScreenInternal(
     LazyPagedColumn(
         modifier = Modifier.fillMaxSize(),
         pagingItems = contacts,
-        contentPadding = PaddingValues(bottom = 96.dp)
+        contentPadding = PaddingValues(bottom = 96.dp),
+        errorMessage = "Failed to load contacts"
     ) {
         items(contacts.itemCount, key = { index ->
             when (val item = contacts[index]) {

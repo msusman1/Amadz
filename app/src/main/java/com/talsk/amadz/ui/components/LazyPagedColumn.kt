@@ -13,6 +13,7 @@ fun <T : Any> LazyPagedColumn(
     pagingItems: LazyPagingItems<T>,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
+    errorMessage: String = "Failed to load items",
     pagedContent: LazyListScope.(LazyPagingItems<T>) -> Unit
 ) {
 
@@ -30,7 +31,7 @@ fun <T : Any> LazyPagedColumn(
             is LoadState.Error -> {
                 item {
                     FullScreenError(
-                        message = "Failed to load call logs",
+                        message = errorMessage,
                         onRetry = { pagingItems.retry() }
                     )
                 }

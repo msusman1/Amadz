@@ -6,14 +6,10 @@ import android.os.Looper
 import android.provider.CallLog
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -71,7 +67,8 @@ fun CallLogsScreenInternal(
     LazyPagedColumn(
         modifier = Modifier.fillMaxSize(),
         pagingItems = callLogs,
-        contentPadding = PaddingValues(bottom = 96.dp)
+        contentPadding = PaddingValues(bottom = 96.dp),
+        errorMessage = "Failed to load call logs"
     ) {
         items(callLogs.itemCount, key = { index ->
             when (val item = callLogs[index]) {

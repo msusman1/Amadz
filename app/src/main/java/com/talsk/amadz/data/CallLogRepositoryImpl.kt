@@ -46,7 +46,9 @@ class CallLogRepositoryImpl @Inject constructor(
         queryCallLogs(
             selection = null,
             selectionArgs = null,
-            sortOrder = "${CallLog.Calls.DATE} DESC LIMIT $limit OFFSET $offset"
+            sortOrder = "${CallLog.Calls.DATE} DESC",
+            limit = limit,
+            offset = offset
         )
     }
 
@@ -164,12 +166,21 @@ class CallLogRepositoryImpl @Inject constructor(
         val records = mutableListOf<RawCallRecord>()
         val seenNormalizedNumbers = HashSet<String>()
 
+        val uri = CallLog.Calls.CONTENT_URI.buildUpon().apply {
+            if (limit > 0) {
+                appendQueryParameter(CallLog.Calls.LIMIT_PARAM_KEY, limit.toString())
+            }
+            if (offset > 0) {
+                appendQueryParameter(CallLog.Calls.OFFSET_PARAM_KEY, offset.toString())
+            }
+        }.build()
+
         contentResolver.query(
-            CallLog.Calls.CONTENT_URI,
+            uri,
             projection,
             selection,
             selectionArgs,
-            "${CallLog.Calls.DATE} DESC LIMIT $limit OFFSET $offset"
+            "${CallLog.Calls.DATE} DESC"
         )?.use { cursor ->
             val numberIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
             val nameIndex = cursor.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
@@ -217,12 +228,24 @@ class CallLogRepositoryImpl @Inject constructor(
     private suspend fun queryCallLogs(
         selection: String?,
         selectionArgs: Array<String>?,
-        sortOrder: String
+        sortOrder: String,
+        limit: Int? = null,
+        offset: Int? = null
     ): List<CallLogData> {
         val simsInfo = simInfoProvider.getSimsInfo()
         val simsByAccountId = simsInfo.associateBy { it.accountId }
+
+        val uri = CallLog.Calls.CONTENT_URI.buildUpon().apply {
+            if (limit != null && limit > 0) {
+                appendQueryParameter(CallLog.Calls.LIMIT_PARAM_KEY, limit.toString())
+            }
+            if (offset != null && offset > 0) {
+                appendQueryParameter(CallLog.Calls.OFFSET_PARAM_KEY, offset.toString())
+            }
+        }.build()
+
         return contentResolver.query(
-            CallLog.Calls.CONTENT_URI,
+            uri,
             PROJECTION,
             selection,
             selectionArgs,
