@@ -1,8 +1,9 @@
 
 # 📞 Amadz – Modern Open Source Calling App
 
-Amadz is a fully modern Android calling application built with Jetpack Compose, Navigation 3, Hilt, and Paging 3.
-It is designed as a powerful alternative to the default Phone app with a modular, scalable architecture and production-grade call handling.
+Amadz is a modern Android calling application built with Jetpack Compose, Navigation 3, Hilt, and Paging 3.
+It is designed as an alternative to the default Phone app, with a modular architecture and full call handling.
+The latest release is **1.1.7** and supports Android 8.0 (API 26) and newer.
 
 [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
      alt="Get it on F-Droid"
@@ -26,8 +27,10 @@ Or download the latest APK from the [Releases Section](https://github.com/msusma
 * Missed call notifications
 * Chronometer support for active calls
 * Proximity sensor support during calls
-* Multi-SIM support with SIM label display
+* Multi-SIM support with SIM labels in call history
 * DTMF tone playback on dial pad
+* Mute and speaker controls in ongoing-call notifications
+* Speaker control while a call is ringing
 
 ---
 
@@ -36,11 +39,15 @@ Or download the latest APK from the [Releases Section](https://github.com/msusma
 * Complete call history screen
 * Grouping by date with sticky headers
 * Pagination using Paging 3
+* Consecutive calls to the same number grouped with a call count
 * Rejected call type support
 * Add unsaved numbers directly to contacts
 * Delete call log entries
-* Intelligent refresh strategy
+* Clear all call history from Settings
+* Automatic refresh when the device call log changes
+* SIM display names and formatted phone numbers
 * Block / Unblock directly from history
+* Compatible call-log queries for devices such as GrapheneOS
 
 ---
 
@@ -50,6 +57,8 @@ Or download the latest APK from the [Releases Section](https://github.com/msusma
 * Add / Remove favourites
 * Grid-based favourites layout
 * Contact detail navigation
+* T9 contact search from the dial pad
+* Add a dialed number to a new or existing contact
 * Search by:
 
     * Name
@@ -57,6 +66,7 @@ Or download the latest APK from the [Releases Section](https://github.com/msusma
     * Email
     * Address
 * Proper handling of contacts with multiple numbers
+* Improved contact name and photo lookup
 
 ---
 
@@ -64,7 +74,9 @@ Or download the latest APK from the [Releases Section](https://github.com/msusma
 
 * Block and unblock numbers
 * Automatic rejection of blocked incoming calls
-* Persistent blocked number storage
+* Exact-number and regular-expression blocking rules
+* International number normalization for matching
+* Persistent storage using DataStore
 
 ---
 
@@ -73,6 +85,7 @@ Or download the latest APK from the [Releases Section](https://github.com/msusma
 * Integrated search + dial pad experience
 * State-driven search bar (Collapsed / Expanded / Dial Pad mode)
 * Frequently called contacts suggestion
+* Dial-pad copy, paste, and cursor-aware editing
 * BackHandler-aware navigation behavior
 * Animated FAB and bottom bar transitions
 
@@ -91,16 +104,26 @@ Or download the latest APK from the [Releases Section](https://github.com/msusma
 
 ---
 
+## ⚙ Settings
+
+* Enable or disable dial-pad tones while respecting system sound settings
+* Open Android sound and vibration settings
+* Manage blocked numbers
+* Clear call history
+
+---
+
 # 🏗 Architecture
 
 Amadz now uses a modern Android stack:
 
-* **Jetpack Compose (BOM 2026)**
+* **Jetpack Compose (BOM 2026.09.00)**
 * **Navigation 3**
-* **Hilt Dependency Injection**
-* **Paging 3**
-* **Kotlin 2.x**
+* **Hilt dependency injection**
+* **Paging 3.5.1**
+* **Kotlin 2.4.20**
 * **KSP (Kotlin Symbol Processing)**
+* **DataStore Preferences**
 * Foreground service–based call orchestration
 * Domain-driven call state management
 * Modular separation of:
@@ -121,6 +144,10 @@ Amadz now uses a modern Android stack:
 * Migrated to Version Catalog (TOML)
 * Improved lifecycle cleanup to prevent leaks
 * Modernized navigation stack (Nav3)
+* Standardized phone-number normalization and display formatting for international numbers
+* Added cached contact lookups and improved contact photo resolution
+* Migrated call-blocking and dial-pad tone preferences to DataStore, including legacy preference migration
+* Updated call-log pagination to use provider-compatible content URI parameters
 
 ---
 
@@ -133,10 +160,10 @@ To enable full functionality:
 
 2. Grant required permissions:
 
-    * Phone
+    * Phone and call-log access
     * Contacts
     * Notifications
-    * Foreground service
+    * Foreground phone-call service
 
 ---
 
