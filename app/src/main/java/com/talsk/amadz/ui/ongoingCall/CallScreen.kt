@@ -1,18 +1,29 @@
 package com.talsk.amadz.ui.ongoingCall
 
-import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,10 +43,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.talsk.amadz.R
 import com.talsk.amadz.domain.CallAction
 import com.talsk.amadz.domain.entity.CallState
@@ -88,7 +103,12 @@ fun CallScreen(
 
     var keyboardOpen by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(uiState) {
-        Log.d("CallScreen", "uiState: $uiState")
+        if (uiState !is CallState.Active) {
+            if (keyboardOpen) {
+                onAction(CallAction.StopDialTone)
+            }
+            keyboardOpen = false
+        }
         if (uiState == CallState.CallDisconnected) {
             onFinish()
         }
@@ -102,6 +122,16 @@ fun CallScreen(
         )
     }
 
+    val canUseCallControls = uiState is CallState.Active || uiState is CallState.OnHold
+    val canToggleKeyboard = uiState is CallState.Active
+    val canToggleSpeaker = uiState is CallState.Active || uiState is CallState.Ringing
+    val isOnHold = uiState is CallState.OnHold
+    val isMuted = (uiState as? CallState.Active)?.isMuted == true
+    val isSpeakerOn = when (uiState) {
+        is CallState.Active -> uiState.isSpeakerOn
+        is CallState.Ringing -> uiState.isSpeakerOn
+        else -> false
+    }
 
     Column(
         modifier = Modifier
@@ -109,14 +139,14 @@ fun CallScreen(
             .background(MaterialTheme.colorScheme.surface)
             .statusBarsPadding()
             .navigationBarsPadding(),
-        verticalArrangement = Arrangement.SpaceBetween
+        verticalArrangement = Arrangement.Top
     ) {
         CallHeader(
-            modifier = Modifier.weight(1.0f),
+            modifier = Modifier.weight(1f),
             contact = contact.contact,
             companyName = contact.companyName,
             uiState = uiState,
-            onContactDetailClick = {}
+            compact = keyboardOpen,
         )
 
         KeyPad(
@@ -126,43 +156,57 @@ fun CallScreen(
         )
         Column(
             modifier = Modifier
+                .fillMaxWidth()
                 .background(color = MaterialTheme.colorScheme.surfaceVariant)
-                .padding(32.dp), verticalArrangement = Arrangement.SpaceEvenly
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ToggleFab(
                     icon = R.drawable.baseline_dialpad_24,
                     text = "Keyboard",
                     isActive = keyboardOpen,
+                    modifier = Modifier.weight(1f),
+                    enabled = canToggleKeyboard,
                     onAction = {
                         keyboardOpen = it
                     }
                 )
                 ToggleFab(
-                    icon = R.drawable.outline_pause_24,
-                    text = "Hold",
-                    isActive = uiState is CallState.OnHold,
+                    icon = if (isOnHold) R.drawable.baseline_play_arrow_24 else R.drawable.outline_pause_24,
+                    text = if (isOnHold) "Resume" else "Hold",
+                    isActive = isOnHold,
+                    modifier = Modifier.weight(1f),
+                    enabled = canUseCallControls,
                     onAction = { onAction(CallAction.Hold(it)) }
                 )
                 ToggleFab(
-                    icon = R.drawable.outline_mic_off_24,
+                    icon = if (isMuted) {
+                        R.drawable.outline_mic_off_24
+                    } else {
+                        R.drawable.outline_mic_24
+                    },
                     text = "Mute",
-                    isActive = (uiState as? CallState.Active)?.isMuted == true,
+                    isActive = isMuted,
+                    modifier = Modifier.weight(1f),
+                    enabled = uiState is CallState.Active,
                     onAction = { onAction(CallAction.Mute(it)) }
                 )
                 ToggleFab(
-                    icon = R.drawable.outline_volume_up_24,
-                    text = "Speaker",
-                    isActive = when (uiState) {
-                        is CallState.Active -> uiState.isSpeakerOn
-                        is CallState.Ringing -> uiState.isSpeakerOn
-                        else -> false
+                    icon = if (isSpeakerOn) {
+                        R.drawable.outline_volume_up_24
+                    } else {
+                        R.drawable.outline_volume_off_24
                     },
+                    text = "Speaker",
+                    isActive = isSpeakerOn,
+                    modifier = Modifier.weight(1f),
+                    enabled = canToggleSpeaker,
                     onAction = { onAction(CallAction.Speaker(it)) }
                 )
             }
@@ -184,44 +228,148 @@ fun CallHeader(
     contact: Contact,
     companyName: String?,
     uiState: CallState,
-    onContactDetailClick: (Contact) -> Unit
+    compact: Boolean = false,
 ) {
-    Surface {
-        Column(
-            modifier = modifier
+    val compactTransition = updateTransition(targetState = compact, label = "callHeaderCompact")
+    val avatarSize by compactTransition.animateDp(
+        transitionSpec = { tween(durationMillis = 300, easing = LinearEasing) },
+        label = "callHeaderAvatarSize",
+    ) { isCompact ->
+        if (isCompact) 48.dp else 96.dp
+    }
+    val nameFontSize by compactTransition.animateFloat(
+        transitionSpec = { tween(durationMillis = 300, easing = LinearEasing) },
+        label = "callHeaderNameSize",
+    ) { isCompact ->
+        if (isCompact) 16f else 22f
+    }
+    val phoneFontSize by compactTransition.animateFloat(
+        transitionSpec = { tween(durationMillis = 300, easing = LinearEasing) },
+        label = "callHeaderPhoneSize",
+    ) { isCompact ->
+        if (isCompact) 14f else 16f
+    }
+    val statusFontSize by compactTransition.animateFloat(
+        transitionSpec = { tween(durationMillis = 300, easing = LinearEasing) },
+        label = "callHeaderStatusSize",
+    ) { isCompact ->
+        if (isCompact) 12f else 14f
+    }
+    val durationFontSize by compactTransition.animateFloat(
+        transitionSpec = { tween(durationMillis = 300, easing = LinearEasing) },
+        label = "callHeaderDurationSize",
+    ) { isCompact ->
+        if (isCompact) 16f else 24f
+    }
+    val avatarTextSpacing by compactTransition.animateDp(
+        transitionSpec = { tween(durationMillis = 300, easing = LinearEasing) },
+        label = "callHeaderAvatarSpacing",
+    ) { isCompact ->
+        if (isCompact) 8.dp else 16.dp
+    }
+    val detailSpacing by compactTransition.animateDp(
+        transitionSpec = { tween(durationMillis = 300, easing = LinearEasing) },
+        label = "callHeaderDetailSpacing",
+    ) { isCompact ->
+        if (isCompact) 4.dp else 8.dp
+    }
+    val statusSpacing by compactTransition.animateDp(
+        transitionSpec = { tween(durationMillis = 300, easing = LinearEasing) },
+        label = "callHeaderStatusSpacing",
+    ) { isCompact ->
+        if (isCompact) 4.dp else 12.dp
+    }
+    val contentVerticalPadding by compactTransition.animateDp(
+        transitionSpec = { tween(durationMillis = 300, easing = LinearEasing) },
+        label = "callHeaderVerticalPadding",
+    ) { isCompact ->
+        if (isCompact) 8.dp else 24.dp
+    }
+
+    Surface(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
                 .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            contentAlignment = Alignment.Center,
         ) {
-            Spacer(modifier = Modifier.height(56.dp))
-            ContactAvatar(
-                modifier = Modifier.size(96.dp),
-                contact = contact,
-                onClick = { onContactDetailClick(contact) })
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(contact.name, style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(companyName ?: "", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(contact.phone, style = MaterialTheme.typography.bodyLarge)
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                uiState.toReadableStatus(),
-                style = MaterialTheme.typography.bodySmall
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            if (uiState is CallState.Active) {
-                Text(
-                    text = secondsToReadableTime(uiState.duration),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(
+                        animationSpec = tween(durationMillis = 300, easing = LinearEasing),
+                    )
+                    .padding(horizontal = 24.dp, vertical = contentVerticalPadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                ContactAvatar(
+                    modifier = Modifier.size(avatarSize),
+                    contact = contact,
                 )
-            } else if (uiState is CallState.OnHold) {
+                Spacer(modifier = Modifier.height(avatarTextSpacing))
                 Text(
-                    text = "Call On Hold",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold
+                    text = contact.name,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = nameFontSize.sp,
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
+                AnimatedVisibility(
+                    visible = !compact && !companyName.isNullOrBlank(),
+                    enter = expandVertically(
+                        expandFrom = Alignment.Top,
+                        animationSpec = tween(durationMillis = 300, easing = LinearEasing),
+                    ) + fadeIn(animationSpec = tween(durationMillis = 300, easing = LinearEasing)),
+                    exit = shrinkVertically(
+                        shrinkTowards = Alignment.Top,
+                        animationSpec = tween(durationMillis = 300, easing = LinearEasing),
+                    ) + fadeOut(animationSpec = tween(durationMillis = 300, easing = LinearEasing)),
+                ) {
+                    Text(
+                        text = companyName.orEmpty(),
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(modifier = Modifier.height(detailSpacing))
+                Text(
+                    text = contact.phone,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontSize = phoneFontSize.sp,
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = if (uiState == CallState.Idle) {
+                        "Waiting for call"
+                    } else {
+                        uiState.toReadableStatus()
+                    },
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontSize = statusFontSize.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = statusSpacing),
+                )
+                if (uiState is CallState.Active) {
+                    Text(
+                        text = secondsToReadableTime(uiState.duration),
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontSize = durationFontSize.sp,
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .padding(top = statusSpacing)
+                            .semantics {
+                                contentDescription =
+                                    "Call duration ${secondsToReadableTime(uiState.duration)}"
+                            },
+                    )
+                }
             }
         }
     }
@@ -270,7 +418,8 @@ fun CallActionButtons(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 24.dp),
+            .padding(top = 16.dp)
+            .heightIn(min = 56.dp),
         horizontalArrangement = if (uiState.isIncomingCall()) Arrangement.SpaceBetween else Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -278,6 +427,7 @@ fun CallActionButtons(
         if (uiState.isIncomingCall()) {
             FloatingActionButton(
                 onClick = onHangup,
+                modifier = Modifier.size(56.dp),
                 containerColor = red,
                 contentColor = Color.White
             ) {
@@ -288,6 +438,7 @@ fun CallActionButtons(
             }
             FloatingActionButton(
                 onClick = onAnswer,
+                modifier = Modifier.size(56.dp),
                 containerColor = green,
                 contentColor = Color.White
             ) {
@@ -299,6 +450,7 @@ fun CallActionButtons(
         } else {
             FloatingActionButton(
                 onClick = onHangup,
+                modifier = Modifier.size(56.dp),
                 containerColor = red,
                 contentColor = Color.White
             ) {

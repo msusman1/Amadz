@@ -16,6 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 
 
@@ -24,24 +29,42 @@ fun ToggleFab(
     @DrawableRes icon: Int,
     text: String,
     isActive: Boolean,
-    onAction: (Boolean) -> Unit
+    onAction: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Button(
             onClick = { onAction(!isActive) },
+            enabled = enabled,
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (isActive) MaterialTheme.colorScheme.inverseSurface else MaterialTheme.colorScheme.background,
                 contentColor = if (isActive) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onBackground
             ),
             contentPadding = PaddingValues(0.dp),
             shape = CircleShape,
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier
+                .size(56.dp)
+                .semantics {
+                    contentDescription = text
+                    role = Role.Switch
+                    stateDescription = if (isActive) "On" else "Off"
+                },
         ) {
             Icon(
-                painter = painterResource(id = icon), contentDescription = text
+                painter = painterResource(id = icon),
+                contentDescription = null,
             )
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(text = text,color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = text,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+        )
     }
 }
