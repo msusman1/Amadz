@@ -1,5 +1,6 @@
 package com.talsk.amadz.data
 
+import android.util.Log
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.talsk.amadz.domain.entity.CallLogGroup
@@ -11,6 +12,7 @@ class CallLogsPagingSource @Inject constructor(
 ) : PagingSource<Int, CallLogGroup>() {
 
     companion object {
+        private const val TAG = "CallLogsPagingSource"
         const val PAGE_SIZE = 50
         const val FIRST_PAGE = 0
     }
@@ -66,13 +68,14 @@ class CallLogsPagingSource @Inject constructor(
                 nextKey = nextKey
             )
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to load call logs", e)
             LoadResult.Error(e)
         }
     }
 
     override fun getRefreshKey(state: PagingState<Int, CallLogGroup>): Int? {
         // For call logs we always want newest entries first after refresh.
-        // Returning FIRST_PAGE prevents refresh from reloading around a mid-list anchor.
+        // Returning FIRST_PAGE prevents refresh from reloading around a mid-list anchor.\
         return FIRST_PAGE
     }
 }

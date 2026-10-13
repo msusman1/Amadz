@@ -25,7 +25,11 @@ class MainActivity : ComponentActivity() {
     lateinit var simInfoProvider: SimInfoProvider
 
     private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions(), {})
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+            if (results.values.any { it }) {
+                recreate()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -103,6 +107,7 @@ class MainActivity : ComponentActivity() {
                     arrayOf(
                         android.Manifest.permission.CALL_PHONE,
                         android.Manifest.permission.READ_CALL_LOG,
+                        android.Manifest.permission.READ_PHONE_STATE,
                         android.Manifest.permission.READ_CONTACTS,
                         android.Manifest.permission.WRITE_CONTACTS
                     )

@@ -262,7 +262,10 @@ class CallLogRepositoryImpl @Inject constructor(
 
             buildList {
                 while (cursor.moveToNext()) {
-                    val phone = cursor.getString(numberColumnIndex)
+                    val rawPhone = cursor.getStringOrNull(numberColumnIndex).orEmpty()
+                    val phone = rawPhone.ifBlank { "Unknown" }
+                    val isUnknownPhone = rawPhone.isBlank()
+
                     val callSim = if (simsInfo.size > 1)
                         simsByAccountId[cursor.getStringOrNull(accountIdColumnIndex)] else null
 
@@ -275,15 +278,15 @@ class CallLogRepositoryImpl @Inject constructor(
                         ?.toUri()
                         ?.takeIf { it != Uri.EMPTY }
                     val cachedName = cursor.getStringOrEmpty(CallLog.Calls.CACHED_NAME).trim()
-                    val normalizedPhone = phoneUtils.normalizeNumber(phone)
-                    val cachedNameIsPhone = cachedName.isNotBlank() && normalizedPhone != null &&
+                    val normalizedPhone = if (!isUnknownPhone) phoneUtils.normalizeNumber(rawPhone) else null
+                    val cachedNameIsPhone = !isUnknownPhone && cachedName.isNotBlank() && normalizedPhone != null &&
                             phoneUtils.normalizeNumber(cachedName) == normalizedPhone
-                    val shouldLookupContact = contactIdFromLog == null ||
+                    val shouldLookupContact = !isUnknownPhone && (contactIdFromLog == null ||
                             cachedPhoto == null ||
                             cachedName.isBlank() ||
-                            cachedNameIsPhone
+                            cachedNameIsPhone)
                     val contact = if (shouldLookupContact) {
-                        contactRepository.getContactByPhone(phone)
+                        contactRepository.getContactByPhone(rawPhone)
                     } else {
                         null
                     }
@@ -291,10 +294,12 @@ class CallLogRepositoryImpl @Inject constructor(
                     val resolvedContactId = contactIdFromLog ?: contact?.id
                     val photo = cachedPhoto ?: contact?.image
                     val name = if (cachedName.isBlank() || cachedNameIsPhone) {
-                        contact?.name.orEmpty()
+                        contact?.name.orEmpty().ifBlank { if (isUnknownPhone) "Unknown" else "" }
                     } else {
                         cachedName
                     }
+
+                    val displayPhone = if (isUnknownPhone) "Unknown" else phoneUtils.formatForDisplay(rawPhone)
 
                     add(
                         CallLogData(
@@ -308,7 +313,7 @@ class CallLogRepositoryImpl @Inject constructor(
                             simSlot = simSlot,
                             simDisplayName = callSim?.displayName,
                             image = photo,
-                            displayPhone = phoneUtils.formatForDisplay(phone)
+                            displayPhone = displayPhone
                         )
                     )
                 }

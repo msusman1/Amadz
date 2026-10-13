@@ -30,25 +30,31 @@ class SimInfoProviderImpl @Inject constructor(
         if (cache != null) {
             return cache!!
         }
-        val tempList: MutableList<SimInfo> = mutableListOf()
-        telecomManager.callCapablePhoneAccounts.forEach { handle ->
-            val subId = handle.id.toIntOrNull() ?: return@forEach
-            val info = subscriptionManager.getActiveSubscriptionInfo(subId) ?: return@forEach
-            tempList.add(
-                SimInfo(
-                    accountId = handle.id,
-                    simSlotIndex = info.simSlotIndex,
-                    displayName = info.displayName?.toString()
+        return runCatching {
+            val tempList: MutableList<SimInfo> = mutableListOf()
+            telecomManager.callCapablePhoneAccounts?.forEach { handle ->
+                val subId = handle.id.toIntOrNull() ?: return@forEach
+                val info = subscriptionManager.getActiveSubscriptionInfo(subId) ?: return@forEach
+                tempList.add(
+                    SimInfo(
+                        accountId = handle.id,
+                        simSlotIndex = info.simSlotIndex,
+                        displayName = info.displayName?.toString()
+                    )
                 )
-            )
-        }
-        return tempList.also {
-            cache = it
+            }
+            tempList
+        }.getOrDefault(emptyList<SimInfo>()).also {
+            if (it.isNotEmpty()) {
+                cache = it.toMutableList()
+            }
         }
     }
 
    override fun checkSimState(): CallState.SimError? {
-        val simState = this.telephonyManager?.simState ?: TelephonyManager.SIM_STATE_UNKNOWN
+        val simState = runCatching {
+            this.telephonyManager?.simState
+        }.getOrNull() ?: TelephonyManager.SIM_STATE_UNKNOWN
         if (simState != TelephonyManager.SIM_STATE_READY) {
             return CallState.SimError(
                 simState = simState,
