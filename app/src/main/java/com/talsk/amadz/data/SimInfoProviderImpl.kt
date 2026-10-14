@@ -32,14 +32,21 @@ class SimInfoProviderImpl @Inject constructor(
         }
         return runCatching {
             val tempList: MutableList<SimInfo> = mutableListOf()
+            val activeInfos = runCatching { subscriptionManager.activeSubscriptionInfoList }.getOrNull().orEmpty()
             telecomManager.callCapablePhoneAccounts?.forEach { handle ->
-                val subId = handle.id.toIntOrNull() ?: return@forEach
-                val info = subscriptionManager.getActiveSubscriptionInfo(subId) ?: return@forEach
+                val subId = handle.id.toIntOrNull()
+                val info = if (subId != null) {
+                    subscriptionManager.getActiveSubscriptionInfo(subId)
+                } else {
+                    activeInfos.firstOrNull { it.iccId == handle.id || it.subscriptionId.toString() == handle.id }
+                }
+                val slotIndex = info?.simSlotIndex ?: tempList.size
+                val name = info?.displayName?.toString()
                 tempList.add(
                     SimInfo(
                         accountId = handle.id,
-                        simSlotIndex = info.simSlotIndex,
-                        displayName = info.displayName?.toString()
+                        simSlotIndex = slotIndex,
+                        displayName = name
                     )
                 )
             }
@@ -51,11 +58,17 @@ class SimInfoProviderImpl @Inject constructor(
         }
     }
 
+   @SuppressLint("MissingPermission")
    override fun checkSimState(): CallState.SimError? {
         val simState = runCatching {
             this.telephonyManager?.simState
         }.getOrNull() ?: TelephonyManager.SIM_STATE_UNKNOWN
-        if (simState != TelephonyManager.SIM_STATE_READY) {
+
+        val hasPhoneAccounts = runCatching {
+            !telecomManager.callCapablePhoneAccounts.isNullOrEmpty()
+        }.getOrDefault(false)
+
+        if (!hasPhoneAccounts && simState != TelephonyManager.SIM_STATE_READY && simState != TelephonyManager.SIM_STATE_UNKNOWN) {
             return CallState.SimError(
                 simState = simState,
                 message = simState.toSimStateReadable()

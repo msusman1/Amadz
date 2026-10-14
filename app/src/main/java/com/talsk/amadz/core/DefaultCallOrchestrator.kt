@@ -1,12 +1,12 @@
 package com.talsk.amadz.core
 
+import android.os.Build
 import android.telecom.Call
 import android.telecom.Call.Callback
 import android.telecom.DisconnectCause
 import android.telecom.VideoProfile
 import android.util.Log
 import java.io.IOException
-import com.talsk.amadz.App
 import com.talsk.amadz.di.ApplicationScope
 import com.talsk.amadz.domain.CallAction
 import com.talsk.amadz.domain.CallOrchestrator
@@ -53,6 +53,7 @@ class DefaultCallOrchestrator @Inject constructor(
     private var currentCallWasDeclined = false
     private var micMuted: Boolean = false
     private var speakerOn: Boolean = false
+    private var hasShownOutgoingUi = false
 
 
     private val telecomCallback = object : Callback() {
@@ -62,6 +63,15 @@ class DefaultCallOrchestrator @Inject constructor(
                 handleCallState(call, state)
             }
         }
+    }
+
+    private fun isOutgoingCall(call: Call): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val direction = runCatching { call.details?.callDirection }.getOrNull()
+            if (direction == Call.Details.DIRECTION_OUTGOING) return true
+            if (direction == Call.Details.DIRECTION_INCOMING) return false
+        }
+        return call.stateCompat != Call.STATE_RINGING
     }
 
     override fun onAction(callAction: CallAction) {
@@ -138,10 +148,14 @@ class DefaultCallOrchestrator @Inject constructor(
         currentCallWasDeclined = false
         micMuted = false
         speakerOn = false
+        hasShownOutgoingUi = false
     }
 
     private fun handleCallState(call: Call, state: Int) {
-        if (currentCallSimError != null && state != Call.STATE_ACTIVE) {
+        if (state == Call.STATE_ACTIVE || state == Call.STATE_CONNECTING || state == Call.STATE_DIALING) {
+            currentCallSimError = null
+        }
+        if (currentCallSimError != null) {
             if (state == Call.STATE_DISCONNECTED) {
                 callUiEffects.stopCallUi()
                 timerJob?.cancel()
@@ -149,11 +163,10 @@ class DefaultCallOrchestrator @Inject constructor(
             }
             return
         }
-        if (state == Call.STATE_ACTIVE) {
-            currentCallSimError = null
-        }
 
         val phone = call.callerPhone()
+        val isOutgoing = isOutgoingCall(call)
+
         when (state) {
             Call.STATE_ACTIVE -> {
                 _callState.value = CallState.Active(
@@ -166,7 +179,7 @@ class DefaultCallOrchestrator @Inject constructor(
                 callUiEffects.showOngoing(phone, 0)
             }
 
-            Call.STATE_CONNECTING -> {
+            Call.STATE_CONNECTING, Call.STATE_NEW, Call.STATE_SELECT_PHONE_ACCOUNT -> {
                 _callState.value = CallState.Connecting
             }
 
@@ -195,6 +208,11 @@ class DefaultCallOrchestrator @Inject constructor(
                 timerJob = null
             }
         }
+
+        if (isOutgoing && state != Call.STATE_DISCONNECTED && !hasShownOutgoingUi) {
+            hasShownOutgoingUi = true
+            callUiEffects.showOutgoing(phone)
+        }
     }
 
     private fun startTimer() {
@@ -220,17 +238,23 @@ class DefaultCallOrchestrator @Inject constructor(
         currentCall = call
         currentCallInitialState = call.stateCompat
         currentCallWasDeclined = false
-        val isOutgoing = call.stateCompat == Call.STATE_CONNECTING ||
-                call.stateCompat == Call.STATE_DIALING
+        hasShownOutgoingUi = false
+
+        val isOutgoing = isOutgoingCall(call)
         currentCallSimError = if (isOutgoing) simInfoProvider.checkSimState() else null
         currentCallSimError?.let { _callState.value = it }
+
         handleCallState(call, call.stateCompat)
         call.registerCallback(telecomCallback)
 
         val isIncomingRinging = call.stateCompat == Call.STATE_RINGING && !isOutgoing
         val phone = call.callerPhone()
+
         when {
-            isOutgoing -> callUiEffects.showOutgoing(phone)
+            isOutgoing && !hasShownOutgoingUi -> {
+                hasShownOutgoingUi = true
+                callUiEffects.showOutgoing(phone)
+            }
             isIncomingRinging -> {
                 appScope.launch {
                     val isBlocked = try {

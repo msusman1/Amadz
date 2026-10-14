@@ -2,6 +2,7 @@ package com.talsk.amadz.ui.ongoingCall
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +21,7 @@ class CallActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        volumeControlStream = AudioManager.STREAM_VOICE_CALL
         ProxyController(this, lifecycle)
         LockScreenController.enable(this)
         setContent {
