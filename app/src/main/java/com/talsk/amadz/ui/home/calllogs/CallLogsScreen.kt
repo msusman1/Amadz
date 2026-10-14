@@ -11,7 +11,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -27,7 +26,7 @@ fun CallLogsScreen(
     onCallClick: (String) -> Unit,
     onCallLogClick: (CallLogData) -> Unit,
     onContactDetailClick: (CallLogData) -> Unit,
-    vm: CallLogsViewModel = hiltViewModel()
+    vm: CallLogsViewModel
 ) {
     val callLogs: LazyPagingItems<CallLogUiModel> = vm.callLogs.collectAsLazyPagingItems()
     val lifecycleOwner = LocalLifecycleOwner.current

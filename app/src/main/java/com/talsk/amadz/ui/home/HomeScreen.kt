@@ -28,6 +28,7 @@ import com.talsk.amadz.ui.components.SimSelectionDialog
 import com.talsk.amadz.ui.extensions.openContactAddScreen
 import com.talsk.amadz.ui.extensions.openContactDetailScreen
 import com.talsk.amadz.ui.home.calllogs.CallLogsScreen
+import com.talsk.amadz.ui.home.calllogs.CallLogsViewModel
 import com.talsk.amadz.ui.home.contacts.ContactsScreen
 import com.talsk.amadz.ui.home.favourite.FavouritesScreen
 import com.talsk.amadz.ui.home.searchbar.HomeSearchBar
@@ -42,6 +43,7 @@ fun HomeScreen() {
     val backStack = rememberNavBackStack(RecentsKey)
     val context = LocalContext.current
     val vm: HomeViewModel = hiltViewModel()
+    val callLogsViewModel: CallLogsViewModel = hiltViewModel()
     var searchBarState by rememberSaveable { mutableStateOf(SearchBarState.COLLAPSED) }
     var pendingDialPhone by remember { mutableStateOf<String?>(null) }
     var simOptions by remember { mutableStateOf<List<SimInfo>>(emptyList()) }
@@ -117,6 +119,7 @@ fun HomeScreen() {
                 }
                 entry(RecentsKey) {
                     CallLogsScreen(
+                        vm = callLogsViewModel,
                         onContactDetailClick = {
                             it.contactId?.let(context::openContactDetailScreen)
                         },
